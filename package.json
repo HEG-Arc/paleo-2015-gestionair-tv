@@ -1,0 +1,23 @@
+{
+  "name": "paleo-2015-gestionair-tv",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "dependencies": {
+    "phaser": "^2.3.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HEG-Arc/paleo-2015-gestionair-tv.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HEG-Arc/paleo-2015-gestionair-tv/issues"
+  },
+  "homepage": "https://github.com/HEG-Arc/paleo-2015-gestionair-tv"
+}
