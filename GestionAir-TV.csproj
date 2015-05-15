@@ -19,6 +19,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="app.css" />
+    <Content Include="fonts\digital-7.mono.png" />
     <Content Include="images\flags\fr.png" />
     <Content Include="images\phaser-logo-small.png" />
     <Content Include="index.html" />
@@ -32,6 +33,10 @@
     <TypeScriptCompile Include="pixi.comments.d.ts" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="fonts\digital-7.mono.fnt" />
+    <Content Include="fonts\digital-7.mono.ttf" />
+    <Content Include="fonts\digital-7.mono.zip" />
+    <Content Include="fonts\project.ltr" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>

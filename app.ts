@@ -2,12 +2,11 @@
 
 module GestionAirTV {
     export class Game {
+        game: Phaser.Game;
 
         constructor() {
-            this.game = new Phaser.Game(800, 600, Phaser.AUTO, 'content', new MenuState());
+            this.game = new Phaser.Game(1920, 1080, Phaser.AUTO, 'content', new MenuState());
         }
-
-        game: Phaser.Game;
 
         handleEvent() {
             var event = {
@@ -34,6 +33,7 @@ module GestionAirTV {
     class MenuState extends Phaser.State {
         preload() {
             this.game.load.image('logo', 'images/phaser-logo-small.png');
+            this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
         }
 
         create() {
@@ -70,6 +70,7 @@ module GestionAirTV {
         initData: GameStateConfig;
         phones: PhoneMap = {};
         players: PlayerMap = {};
+        countDownText: Phaser.BitmapText;
 
         constructor(init:GameStateConfig) {
             super();
@@ -77,15 +78,40 @@ module GestionAirTV {
         }
 
         preload() {
-            this.game.load.image('phone', 'images/flags/fr.png');
+            this.game.load.image('phone', 'images/phone72.png');
+            this.game.load.image('correct', 'images/checked21.png');
+            this.game.load.image('wrong', 'images/delete102.png');
+            this.game.load.image('fr', 'images/flags/fr.png');
+            this.game.load.bitmapFont('digital-7', 'fonts/digital-7.mono.png', 'fonts/digital-7.mono.xml');
         }
 
         create() {
+            this.game.stage.backgroundColor = 0xffffff;
             this.initData.phones.forEach(phoneData => {
                 var phone = new Phone(this.game, phoneData);
+                phone.inputEnabled = true;
+                phone.input.enableDrag(true);
+                phone.tint = 0x00ff00;
+                phone.scale.setTo(0.3, 0.3);
+                phone.events.onInputDown.add((sprite:Phone, pointer) => {
+                    sprite.tint = 0xff0000;
+                })
                 this.phones[phoneData.number] = phone;
                 this.add.existing(phone);
             });
+            var timer:number = 0;
+            var timerEvent = this.time.events.loop(Phaser.Timer.SECOND, function(){
+                timer++;
+                var s = '0' + timer;
+                this.countDownText.setText(s.substr(s.length-2));
+            }, this);
+            this.countDownText = this.add.bitmapText(200, 100, 'digital-7', '00', 96);
+
+            var correct = this.add.sprite(400, 400, 'correct');
+            correct.tint = 0x00ff00;
+            var wrong = this.add.sprite(400, 800, 'wrong');
+            wrong.tint = 0xff0000;
+            //this.add.text(0, 100, String(timer), { font: "65px Arial", fill: "#ff0044", align: "center" });
         }
     }
 
@@ -98,6 +124,8 @@ module GestionAirTV {
         constructor(game: Phaser.Game, conf:PhoneConfig) {
             super(game, conf.x, conf.y, 'phone')
             this.number = conf.number;
+            var flag = new Phaser.Sprite(game, 0, 0, 'fr');
+            this.addChild(flag);
         }
     }
     module Phone {
@@ -108,6 +136,10 @@ module GestionAirTV {
         id: number;
         name: string;
         score: number = 0;
+
+    }
+
+    class PlayerScore {
 
     }
 
