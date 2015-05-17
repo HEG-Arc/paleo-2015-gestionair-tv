@@ -1,14 +1,18 @@
 ﻿/// <reference path='phaser.comments.d.ts' />
 
 module GestionAirTV {
-    var DEBUG: boolean = true;
-    export class Game {
-        game: Phaser.Game;
+    var DEBUG: boolean = false;
+    export class Game extends Phaser.Game {
+
+        phoneMaterial: Phaser.Physics.P2.Material;
+        playerMaterial: Phaser.Physics.P2.Material;
 
         constructor() {
-            this.game = new Phaser.Game(1920, 1080, Phaser.AUTO, 'content', new MenuState());
+            super(1920, 1080, Phaser.AUTO, 'content', new MenuState());
             this.handleEvent();
         }
+
+        gameState: GameState;
 
         handleEvent() {
             var event = {
@@ -36,16 +40,25 @@ module GestionAirTV {
                     { number: 10, x: 100, y: 200, orientation: Phone.Orientation.RIGHT }
                 ]
             };
-            var state = new GameState(event)
-            this.game.state.remove('game');
-            this.game.state.add('game', state, true);
+            this.gameState = new GameState(event)
+            this.state.remove('game');
+            this.state.add('game', this.gameState, true);
+        }
+        debugRinging(number:number) {
+            this.gameState.phones[number].setStateRinging();
+        }
+        debugAnswering(id: number, number: number) {
+            var player = this.gameState.players[id];
+            var phone = this.gameState.phones[number];
+            player.moveToPhone(phone);
+            phone.setStateWaitForPlayer(player);
         }
 
     }
 
     class MenuState extends Phaser.State {
         preload() {
-            //this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+            this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
             this.game.load.image('logo', 'images/phaser-logo-small.png');
         }
 
@@ -87,6 +100,8 @@ module GestionAirTV {
         initData: GameStateConfig;
         phones: PhoneMap = {};
         players: PlayerMap = {};
+        trailsBitmap: Phaser.BitmapData;
+        game: Game;
 
         constructor(init:GameStateConfig) {
             super();
@@ -94,7 +109,7 @@ module GestionAirTV {
         }
 
         preload() {
-            //this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+            this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
             this.game.load.image('phone', 'images/phone72.png');
             this.game.load.image('correct', 'images/checked21.png');
             this.game.load.image('wrong', 'images/delete102.png');
@@ -106,14 +121,28 @@ module GestionAirTV {
 
         create() {
             this.game.stage.backgroundColor = 0x10a2ff;
-            this.game.physics.startSystem(Phaser.Physics.ARCADE);
-            this.game.physics.arcade.sortDirection = Phaser.Physics.Arcade.SORT_NONE;
-            Phaser.Physics.Arcade.OVERLAP_BIAS = 0;
+            this.physics.startSystem(Phaser.Physics.P2JS);
+            this.game.phoneMaterial = new Phaser.Physics.P2.Material('phoneMaterial');
+            this.game.playerMaterial = new Phaser.Physics.P2.Material('playerMaterial');
+            var contactMaterialPhonePlayer = this.physics.p2.createContactMaterial(this.game.phoneMaterial, this.game.playerMaterial);
+
+            contactMaterialPhonePlayer.friction = 10;     // Friction to use in the contact of these two materials.
+            contactMaterialPhonePlayer.restitution = 0.0;  // Restitution (i.e. how bouncy it is!) to use in the contact of these two materials.
+
+            var contactMaterialPlayerPlayer = this.physics.p2.createContactMaterial(this.game.playerMaterial, this.game.playerMaterial);
+            contactMaterialPlayerPlayer.friction = 0.2;     // Friction to use in the contact of these two materials.
+            contactMaterialPlayerPlayer.restitution = 1.0;  // Restitution (i.e. how bouncy it is!) to use in the contact of these two materials.
+            contactMaterialPlayerPlayer.surfaceVelocity = 5;        // Will add surface velocity to this material. If bodyA rests on top if bodyB, and the surface velocity is positive, bodyA will slide to the right.
+
+
             var back = this.game.add.graphics(100, 50);
             back.beginFill(0xffffe8);
             back.lineStyle(3, 0x999999);
             back.drawRect(0, 0, 1720, 700);
             back.endFill();
+
+            
+
             back = this.game.add.graphics(300, 750);
             back.beginFill(0xffffe8);
             back.lineStyle(3, 0x999999);
@@ -124,7 +153,10 @@ module GestionAirTV {
             back.lineStyle(3, 0x999999);
             back.drawRect(0, 0, 200, 20);
             back.endFill();
-
+            
+            this.trailsBitmap = this.game.add.bitmapData(1720, 700);
+            this.game.add.image(100, 50, this.trailsBitmap, null);
+            
             this.initData.phones.forEach(phoneData => {
                 var phone = new Phone(this.game, phoneData);
                 this.phones[phoneData.number] = phone;
@@ -132,37 +164,23 @@ module GestionAirTV {
             });
 
             this.initData.players.forEach((playerData, i) => {
-                var player = new Player(this.game, playerData, i);
-                player.inputEnabled = true;
-                player.input.enableDrag();
-                if (i === 0) {
-                    player.body.allowGravity = false;
-                }
-                this.players[playerData.id] = player;
                 var t = this.game.time.create();
                 t.start();
-                t.add(i * 2000, args => {
+                t.add(i * 2000, () => {
+                    var player = new Player(this.game, playerData, i);
+                    this.players[playerData.id] = player;
                     this.add.existing(player)
-                    console.log(args);
-                }, this, player);
+                }, this);
                 
             });
-
-            //this.add.text(0, 100, String(timer), { font: "65px Arial", fill: "#ff0044", align: "center" });
         }
 
         update() {
-            var playersArray = Object.keys(this.players).map(k=> { return this.players[k]; });
-            this.game.physics.arcade.collide(playersArray, playersArray);
-            var phonesArray = Object.keys(this.phones).map(k=> { return this.phones[k].phone; });
-            this.game.physics.arcade.collide(playersArray, phonesArray);
+
         }
 
         render() {
-            if (this.players[1]) {
-                this.game.debug.bodyInfo(this.players[1], 32, 32);
-                this.game.debug.body(this.players[1]);
-            }
+
         }
 
     }
@@ -176,6 +194,8 @@ module GestionAirTV {
         countDownText: Phaser.BitmapText;
         timer: number = -1;
         ringingTween: Phaser.Tween;
+        target: Phaser.Point;
+        player: Player;
 
         constructor(game: Phaser.Game, conf: PhoneConfig) {
             super(game, null, 'phone', true)
@@ -195,9 +215,11 @@ module GestionAirTV {
             this.phone.anchor.setTo(0.5, 0.5);
             this.ringingTween = game.add.tween(this.phone.scale).to({ x: 0.8, y: 0.8 }, 1500, Phaser.Easing.Sinusoidal.InOut, false, 0, -1, true);
             this.addChild(this.phone);
-            this.game.physics.enable(this.phone, Phaser.Physics.ARCADE, true);
-            this.phone.body.immovable = true;
-            this.phone.body.allowGravity = false;
+
+            var body = game.physics.p2.createBody(this.x + this.phone.width / 2, this.y + this.phone.height / 2, 0, true);
+            body.setRectangleFromSprite(this.phone);
+            body.setMaterial((<Game>this.game).phoneMaterial);
+            body.debug = DEBUG;            
 
             this.flag = new Phaser.Image(game, 0, 0, 'fr', null);
             this.flag.scale.setTo(0.2, 0.2);
@@ -222,12 +244,16 @@ module GestionAirTV {
             this.countDownText.visible = false;
             if (conf.orientation === Phone.Orientation.BOTTOM) {
                 this.countDownText.position.setTo(this.phone.width, this.phone.height);
+                this.target = new Phaser.Point(this.x + this.phone.width / 2, this.y + this.phone.height + Player.SIZE/2);
             } else if (conf.orientation === Phone.Orientation.TOP) {
                 this.countDownText.position.setTo(this.phone.width, -this.countDownText.height);
+                this.target = new Phaser.Point(this.x + this.phone.width / 2, this.y - Player.SIZE/2);
             } else if (conf.orientation === Phone.Orientation.RIGHT) {
                 this.countDownText.position.setTo(this.phone.width, -this.countDownText.height);
+                this.target = new Phaser.Point(this.x + this.phone.width + Player.SIZE/2, this.y + this.phone.height/2);
             } else if (conf.orientation === Phone.Orientation.LEFT) {
                 this.countDownText.position.setTo(-this.countDownText.width, -this.countDownText.height);
+                this.target = new Phaser.Point(this.x - Player.SIZE / 2, this.y + this.phone.height / 2);
             }
             this.addChild(this.countDownText);
 
@@ -244,52 +270,78 @@ module GestionAirTV {
                 return false;
             }
 
+            this.phone.inputEnabled = true;
+            this.phone.events.onInputUp.add((phone: Phone, pointer) => {
+                //this.position.setTo(pointer.x - this.phone.width / 2, pointer.y - this.phone.height / 2);
+                //this.phone.position.set(this.phone.width / 2, this.phone.height / 2);
+                if (this.timer === -1) {
+                    this.setStateRinging();
+                }
+                if (this.timer > 2) {
+                    this.setStateAnswered();
+                }
+                if (isDoubleClick(pointer)) {
+                    if (this.timer > 2) {
+                        this.setStateAnswered();
+                    } else {
+                        this.setStateAnswering();
+                    }
+
+                }
+            })
+
             if (DEBUG) {
+                var g = this.game.add.graphics(this.target.x, this.target.y);
+                g.beginFill(0x000000);
+                g.drawCircle(0, 0, 4);
+                g.endFill();
                 this.debugText = new Phaser.Text(game, 0, this.phone.height, '', { font: "36px Arial", fill: "#000000" });
                 this.addChild(this.debugText);
-                this.phone.inputEnabled = true;
+                
                 //this.phone.input.enableDrag(true);
-                this.phone.events.onInputUp.add((phone: Phone, pointer) => {
-                    //this.position.setTo(pointer.x - this.phone.width / 2, pointer.y - this.phone.height / 2);
-                    //this.phone.position.set(this.phone.width / 2, this.phone.height / 2);
-                    if (this.timer === -1) {
-                        this.setStateRinging();
-                    }
-                    if(isDoubleClick(pointer)){
-                        if (this.timer > 2) {
-                            this.setStateAnswered();
-                        } else {
-                            this.setStateAnswering();
-                        }
-                        
-                    }
-                })
+                
             }
-            this.setStateAnswering();
         }
 
         setStateRinging() {
+            this.state = Phone.State.RINGING;
             this.phone.tint = 0xffcc00;
             this.ringingTween.isPaused ? this.ringingTween.resume() : this.ringingTween.start();
             this.flag.visible = false;
             this.countDownText.visible = false;
         }
 
+        setStateWaitForPlayer(player: Player) {
+            this.state = Phone.State.WAITING;
+            this.player = player;
+        }
+
         setStateAnswering() {
+            this.state = Phone.State.ANSWERING;
             this.ringingTween.pause();
             this.phone.scale.setTo(1, 1);
             this.timer = 0;
             this.countDownText.visible = true;
             this.flag.loadTexture('fr', null);
             this.flag.visible = true;
-            //get coordinates for player
         }
 
         setStateAnswered() {
             this.phone.tint = 0xdc1616;
             this.timer = -1;
-            //338000
-            //create checkmark anim? 
+            this.player.moveToCenter();
+            //create checkmark anim?
+            //this.phone.tint = 0x338000;
+            setTimeout(() => { this.setStateAvailable() }, 2000);
+            
+        }
+        setStateAvailable() {
+            this.state = Phone.State.AVAILABLE;
+            this.phone.tint = 0x000000;
+            this.player = null;
+            this.flag.visible = false;
+            this.countDownText.visible = false;
+            this.timer = -1;
         }
 
 
@@ -297,10 +349,23 @@ module GestionAirTV {
             if (DEBUG) {
                 //this.debugText.setText(this.position.toString());
             }
+
+            if (this.state === Phone.State.WAITING && this.target.distance(this.player.position) < 100) {
+                this.setStateAnswering();
+            }
+            if (this.state === Phone.State.RINGING) {
+                var player = Object.keys((<GameState>this.game.state.getCurrentState()).players).map(k=> {
+                    return (<GameState>this.game.state.getCurrentState()).players[k];
+                }).filter(p => { return p.phone === null }).shift();
+                if (player) {
+                    player.moveToPhone(this);
+                    this.setStateWaitForPlayer(player);
+                }
+            }
         }
     }
     module Phone {
-        export enum State { AVAILABLE = 0, RINGING = 4 };
+        export enum State { AVAILABLE = 0, RINGING = 4, ANSWERING=8, WAITING = 9 };
         export enum Orientation {
             TOP = 0,
             RIGHT = 1,
@@ -313,17 +378,29 @@ module GestionAirTV {
         id: number;
         name: string;
         score: number = 0;
-        target: Phaser.Point;
+        target: Phaser.Point = new Phaser.Point;
+        home: Phaser.Point;
+        color: number;
+        phone: Phone = null;
+        
 
         constructor(game: Phaser.Game, conf: PlayerConfig, i: number) {
-            super(game, 300, 600, new Phaser.RenderTexture(game, 100, 100, 'empty'))
-            this.target = new Phaser.Point(game.world.width / 2, game.world.height/3);
-            game.physics.enable(this, Phaser.Physics.ARCADE, true);
-            this.body.collideWorldBounds = true;
+            super(game, 400, 700, new Phaser.RenderTexture(game, 100, 100, 'empty'))
+            this.home = new Phaser.Point(game.world.width / 2, game.world.height/3);
+            this.anchor.setTo(0.5, 0.5);
+            game.physics.p2.enable(this, DEBUG);
+            this.body.setMaterial((<Game>this.game).playerMaterial);
+            this.body.fixedRotation = true;
+            this.body.damping = 0.9;
+            this.body.angularDamping = 0.9;
+            this.body.moveUp(60);
             var shadow = this.makeIcon(i, true)
-            shadow.position.setTo(6, 6);
+            shadow.position.setTo(-44, -44);
             this.addChild(shadow);
-            this.addChild(this.makeIcon(i));    
+            var icon = this.makeIcon(i);
+            icon.position.setTo(-50, -50);
+            this.addChild(icon);    
+            this.moveToCenter();
         }
 
         drawIcon(graphics: Phaser.Graphics, type) {
@@ -346,12 +423,14 @@ module GestionAirTV {
             var colors = [0xffcc00, 0xff0066, 0xabc837, 0x0055d4, 0xff6600, 0xc87137];
             var graphics = new Phaser.Graphics(this.game, 0, 0);
             if (shadow) {
-                graphics.beginFill(0xffffff);
+                this.color = 0xffffff;
+                graphics.beginFill(this.color);
                 graphics.lineStyle(2, 0xffffff, 0.6);
                 graphics.tint = 0x000000;
                 graphics.alpha = 0.6;
             } else {
-                graphics.beginFill(colors[type]);
+                this.color = colors[type];
+                graphics.beginFill(this.color);
                 graphics.lineStyle(2, 0xffffff);
             }
             this.drawIcon(graphics, type);
@@ -359,17 +438,31 @@ module GestionAirTV {
             return graphics;
         }
 
+        moveToPhone(phone: Phone) {
+            this.target.copyFrom(phone.target);
+            this.phone = phone;
+        }
+
+        moveToCenter() {
+            this.target.copyFrom(this.home);
+            this.phone = null;
+        }
+
         update() {
-            if (this.position.distance(this.target, true) > 100) {
-                this.game.physics.arcade.moveToXY(this, this.target.x, this.target.y, 200);
-            } else {
-                this.game.physics.arcade.moveToXY(this, this.target.x, this.target.y, 10);
-                //this.body.velocity.set(0);
-                //this.body.acceleration.set(0);
-            }
+            var speed = 400;
+            var angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+            this.body.force.x = Math.cos(angle) * speed;    // accelerateToObject 
+            this.body.force.y = Math.sin(angle) * speed;
+            var trails = (<GameState>this.game.state.getCurrentState()).trailsBitmap;
+            var s = '00' + this.color.toString(16);
+            trails.context.fillStyle = '#' + s.substr(s.length - 6);
+            trails.context.fillRect(this.x - this.width, this.y - this.height / 2, 4, 4);
+            trails.dirty = true;
         }
     }
-  
+    module Player {
+        export var SIZE: number = 100;
+    }
 
     class PlayerScore {
         addAnswer() {
