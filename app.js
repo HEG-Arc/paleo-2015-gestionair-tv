@@ -11,7 +11,7 @@ var GestionAirTV;
     var Game = (function (_super) {
         __extends(Game, _super);
         function Game() {
-            _super.call(this, 1920, 1080, Phaser.AUTO, 'content', new MenuState());
+            _super.call(this, 1920, 1080, Phaser.CANVAS, 'content', new MenuState());
             this.handleEvent();
         }
         Game.prototype.handleEvent = function () {
@@ -99,16 +99,6 @@ var GestionAirTV;
         GameState.prototype.create = function () {
             var _this = this;
             this.game.stage.backgroundColor = 0x10a2ff;
-            this.physics.startSystem(Phaser.Physics.P2JS);
-            this.game.phoneMaterial = new Phaser.Physics.P2.Material('phoneMaterial');
-            this.game.playerMaterial = new Phaser.Physics.P2.Material('playerMaterial');
-            var contactMaterialPhonePlayer = this.physics.p2.createContactMaterial(this.game.phoneMaterial, this.game.playerMaterial);
-            contactMaterialPhonePlayer.friction = 10; // Friction to use in the contact of these two materials.
-            contactMaterialPhonePlayer.restitution = 0.0; // Restitution (i.e. how bouncy it is!) to use in the contact of these two materials.
-            var contactMaterialPlayerPlayer = this.physics.p2.createContactMaterial(this.game.playerMaterial, this.game.playerMaterial);
-            contactMaterialPlayerPlayer.friction = 0.2; // Friction to use in the contact of these two materials.
-            contactMaterialPlayerPlayer.restitution = 1.0; // Restitution (i.e. how bouncy it is!) to use in the contact of these two materials.
-            contactMaterialPlayerPlayer.surfaceVelocity = 5; // Will add surface velocity to this material. If bodyA rests on top if bodyB, and the surface velocity is positive, bodyA will slide to the right.
             var back = this.game.add.graphics(100, 50);
             back.beginFill(0xffffe8);
             back.lineStyle(3, 0x999999);
@@ -167,10 +157,6 @@ var GestionAirTV;
             this.phone.anchor.setTo(0.5, 0.5);
             this.ringingTween = game.add.tween(this.phone.scale).to({ x: 0.8, y: 0.8 }, 1500, Phaser.Easing.Sinusoidal.InOut, false, 0, -1, true);
             this.addChild(this.phone);
-            var body = game.physics.p2.createBody(this.x + this.phone.width / 2, this.y + this.phone.height / 2, 0, true);
-            body.setRectangleFromSprite(this.phone);
-            body.setMaterial(this.game.phoneMaterial);
-            body.debug = DEBUG;
             this.flag = new Phaser.Image(game, 0, 0, 'fr', null);
             this.flag.scale.setTo(0.2, 0.2);
             if (conf.orientation === 2 /* BOTTOM */ || conf.orientation === 0 /* TOP */) {
@@ -272,7 +258,7 @@ var GestionAirTV;
             var _this = this;
             this.phone.tint = 0xdc1616;
             this.timer = -1;
-            this.player.moveToCenter();
+            this.player.moveToHome();
             //create checkmark anim?
             //this.phone.tint = 0x338000;
             setTimeout(function () {
@@ -291,7 +277,7 @@ var GestionAirTV;
             var _this = this;
             if (DEBUG) {
             }
-            if (this.state === 9 /* WAITING */ && this.target.distance(this.player.position) < 100) {
+            if (this.state === 9 /* WAITING */ && this.target.distance(this.player.position) < 1) {
                 this.setStateAnswering();
             }
             if (this.state === 4 /* RINGING */) {
@@ -333,21 +319,15 @@ var GestionAirTV;
             this.score = 0;
             this.target = new Phaser.Point;
             this.phone = null;
-            this.home = new Phaser.Point(game.world.width / 2, game.world.height / 3);
+            this.home = new Phaser.Point(game.world.width / 2 - ((-3 + i) * Player.SIZE), game.world.height / 3);
             this.anchor.setTo(0.5, 0.5);
-            game.physics.p2.enable(this, DEBUG);
-            this.body.setMaterial(this.game.playerMaterial);
-            this.body.fixedRotation = true;
-            this.body.damping = 0.9;
-            this.body.angularDamping = 0.9;
-            this.body.moveUp(60);
             var shadow = this.makeIcon(i, true);
             shadow.position.setTo(-44, -44);
             this.addChild(shadow);
             var icon = this.makeIcon(i);
             icon.position.setTo(-50, -50);
             this.addChild(icon);
-            this.moveToCenter();
+            this.moveToHome();
         }
         Player.prototype.drawIcon = function (graphics, type) {
             if (type === 0) {
@@ -391,20 +371,27 @@ var GestionAirTV;
         Player.prototype.moveToPhone = function (phone) {
             this.target.copyFrom(phone.target);
             this.phone = phone;
+            this.moveToTarget();
         };
-        Player.prototype.moveToCenter = function () {
+        Player.prototype.moveToHome = function () {
             this.target.copyFrom(this.home);
             this.phone = null;
+            this.moveToTarget();
+        };
+        Player.prototype.moveToTarget = function () {
+            if (this.tween) {
+                this.tween.stop();
+            }
+            this.tween = this.game.add.tween(this).to(this.target, Math.abs(this.target.distance(this.position) / 200) * 1000, Phaser.Easing.Sinusoidal.InOut, true, 0, 0, false);
         };
         Player.prototype.update = function () {
-            var speed = 400;
-            var angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
-            this.body.force.x = Math.cos(angle) * speed; // accelerateToObject 
-            this.body.force.y = Math.sin(angle) * speed;
             var trails = this.game.state.getCurrentState().trailsBitmap;
             var s = '00' + this.color.toString(16);
+            trails.context.beginPath();
             trails.context.fillStyle = '#' + s.substr(s.length - 6);
-            trails.context.fillRect(this.x - this.width, this.y - this.height / 2, 4, 4);
+            trails.context.arc(this.x - this.width, this.y - this.height / 2, 2, 0, 360, false);
+            trails.context.closePath();
+            trails.context.fill();
             trails.dirty = true;
         };
         return Player;
