@@ -135,6 +135,8 @@ module GestionAirTV {
             back.lineStyle(3, 0x999999);
             back.drawRect(0, 0, 200, 20);
             back.endFill();
+
+            this.game.add.text(1630, 1000, 'Gestion\'Air', { font: "48px Verdana", fill: "#ffffff" });
             
             this.trailsBitmap = this.game.add.bitmapData(1720, 700);
             this.game.add.image(100, 50, this.trailsBitmap, null);
@@ -146,10 +148,12 @@ module GestionAirTV {
             });
 
             this.initData.players.forEach((playerData, i) => {
+                var playerScore = new PlayerScore(this.game, playerData, i)
+                this.add.existing(playerScore);
                 var t = this.game.time.create();
                 t.start();
                 t.add(i * 2000, () => {
-                    var player = new Player(this.game, playerData, i);
+                    var player = new Player(this.game, playerData, i, playerScore);
                     this.players[playerData.id] = player;
                     this.add.existing(player)
                 }, this);
@@ -360,55 +364,16 @@ module GestionAirTV {
         color: number;
         phone: Phone = null;
         tween: Phaser.Tween;
-        
+        playerScore: PlayerScore;
 
-        constructor(game: Phaser.Game, conf: PlayerConfig, i: number) {
+        constructor(game: Phaser.Game, conf: PlayerConfig, i: number, playerScore: PlayerScore) {
             super(game, 400, 700, new Phaser.RenderTexture(game, 100, 100, 'empty'))
-            this.home = new Phaser.Point(game.world.width / 2 - ((-3 + i) * Player.SIZE), game.world.height/3);
+            this.home = new Phaser.Point(game.world.width / 2 - ((-3 + i) * (Player.SIZE + 20)), game.world.height/3);
             this.anchor.setTo(0.5, 0.5);
-
-            var shadow = this.makeIcon(i, true)
-            shadow.position.setTo(-44, -44);
-            this.addChild(shadow);
-            var icon = this.makeIcon(i);
-            icon.position.setTo(-50, -50);
-            this.addChild(icon);    
+            this.color = Player.colors[i];
+            this.addChild(new PlayerIcon(game, 0, 0, i, this.color));
+            this.playerScore = playerScore;
             this.moveToHome();
-        }
-
-        drawIcon(graphics: Phaser.Graphics, type) {
-            if (type === 0) { //star 5
-                graphics.drawPolygon(new Phaser.Polygon(50, 0, 35, 30, 2, 35, 26, 58, 21, 90, 50, 75, 79, 90, 74, 58, 98, 35, 65, 30).points);
-            } else if (type === 1) { //square
-                graphics.drawPolygon(new Phaser.Polygon(5, 5, 5, 95, 95, 95, 95, 5).points);
-            } else if (type === 2) { //triangle
-                graphics.drawPolygon(new Phaser.Polygon(0, 86, 100, 86, 50, 0).points);
-            } else if (type === 3) { //penta
-                graphics.drawPolygon(new Phaser.Polygon(50, 0, 2, 35, 21, 90, 79, 90, 98, 35).points);
-            } else if (type === 4) { //star 4
-                graphics.drawPolygon(new Phaser.Polygon(50, 0, 35, 35, 0, 50, 35, 65, 50, 100, 65, 65, 100, 50, 65, 35).points);
-            } else if (type === 5) { //circle
-                graphics.drawCircle(50, 50, 100);
-            }
-        }
-
-        makeIcon(type: number, shadow?) {
-            var colors = [0xffcc00, 0xff0066, 0xabc837, 0x0055d4, 0xff6600, 0xc87137];
-            var graphics = new Phaser.Graphics(this.game, 0, 0);
-            if (shadow) {
-                this.color = 0xffffff;
-                graphics.beginFill(this.color);
-                graphics.lineStyle(2, 0xffffff, 0.6);
-                graphics.tint = 0x000000;
-                graphics.alpha = 0.6;
-            } else {
-                this.color = colors[type];
-                graphics.beginFill(this.color);
-                graphics.lineStyle(2, 0xffffff);
-            }
-            this.drawIcon(graphics, type);
-            graphics.endFill();
-            return graphics;
         }
 
         moveToPhone(phone: Phone) {
@@ -442,11 +407,68 @@ module GestionAirTV {
             trails.dirty = true;
         }
     }
-    module Player {
-        export var SIZE: number = 100;
+
+    class PlayerIcon extends Phaser.Graphics {
+        constructor(game, x, y, type, color) {
+            super(game, x, y);
+            var shadow = this.makeIcon(type, null, true)
+            shadow.position.setTo(-44, -44);
+            this.addChild(shadow);
+            var icon = this.makeIcon(type, color);
+            icon.position.setTo(-50, -50);
+            this.addChild(icon);
+        }
+
+        drawIcon(graphics: Phaser.Graphics, type) {
+            if (type === 0) { //star 5
+                graphics.drawPolygon(new Phaser.Polygon(50, 0, 35, 30, 2, 35, 26, 58, 21, 90, 50, 75, 79, 90, 74, 58, 98, 35, 65, 30, 50,0).points);
+            } else if (type === 1) { //square
+                graphics.drawPolygon(new Phaser.Polygon(5, 5, 5, 95, 95, 95, 95, 5, 5,5).points);
+            } else if (type === 2) { //triangle
+                graphics.drawPolygon(new Phaser.Polygon(0, 86, 100, 86, 50, 0, 0,86).points);
+            } else if (type === 3) { //penta
+                graphics.drawPolygon(new Phaser.Polygon(50, 0, 2, 35, 21, 90, 79, 90, 98, 35, 50,0).points);
+            } else if (type === 4) { //star 4
+                graphics.drawPolygon(new Phaser.Polygon(50, 0, 35, 35, 0, 50, 35, 65, 50, 100, 65, 65, 100, 50, 65, 35, 50,0).points);
+            } else if (type === 5) { //circle
+                graphics.drawCircle(50, 50, 100);
+            }
+        }
+
+        makeIcon(type: number, color, shadow?) {
+            var graphics = new Phaser.Graphics(this.game, 0, 0);
+            if (shadow) {
+                graphics.beginFill(0xffffff);
+                graphics.tint = 0x000000;
+                graphics.alpha = 0.6;
+            } else {
+                graphics.beginFill(color);
+                graphics.lineStyle(2, 0xffffff);
+            }
+            this.drawIcon(graphics, type);
+            graphics.endFill();
+            return graphics;
+        }
+
     }
 
-    class PlayerScore {
+    module Player {
+        export var SIZE: number = 100;
+        export var colors = [0xffcc00, 0xff0066, 0xabc837, 0x0055d4, 0xff6600, 0xc87137];
+    }
+
+    class PlayerScore extends Phaser.Graphics {
+
+
+        constructor(game: Phaser.Game, conf:PlayerConfig, i: number) {
+            super(game,(i % 3) * 500 + 200, 850 + (i>2 ? 150 : 0));
+            game.state.getCurrentState().add.existing(this);
+            this.addChild(new PlayerIcon(game, 0, 0, i, Player.colors[i]));
+            var text = new Phaser.Text(game, 80, -50, conf.name, { font: "48px Arial", fill: "#ffffff" });
+                text.setShadow(2, 2, 'rgba(0, 0, 0, 0.5)');
+            this.addChild(text);
+        }
+
         addAnswer() {
             /*
             var correct = this.add.sprite(400, 400, 'correct');
