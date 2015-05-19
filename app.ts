@@ -1,21 +1,84 @@
 ﻿/// <reference path='phaser.comments.d.ts' />
 
 module GestionAirTV {
-    var DEBUG: boolean = false;
     export class Game extends Phaser.Game {
+
+        simulator: Simulator;
 
         constructor() {
             super(1920, 1080, Phaser.CANVAS, 'content', new MenuState());
-            this.handleEvent();
+        }
+
+        boot() {
+            super.boot();
+            this.simulator = new Simulator(this);
+        }
+
+        update(time) {
+            super.update(time);
+            this.simulator.update();
         }
 
         gameState: GameState;
 
-        handleEvent() {
-            var event = {
-                type: 'Game',
-                state: 'start',
-                endTime: new Date(new Date().getTime() + 10000),
+        handleEvent(event) {
+            switch (event.type) {
+                case 'GAME_START':
+                    this.gameState = new GameState(event)
+                    this.state.remove('game');
+                    this.state.add('game', this.gameState, true);
+                    break;
+                case 'PHONE_RINGING':
+                    this.gameState.phones[event.number].setStateRinging();
+                    break;
+                case 'PLAYER_ANSWERING':
+                    var player = this.gameState.players[event.playerId];
+                    var phone = this.gameState.phones[event.number];
+                    if (player && phone) {
+                        player.moveToPhone(phone);
+                        phone.setStateWaitForPlayer(player);
+                        phone.setFlag(event.flag);
+                    }
+                    break;
+                case 'PLAYER_ANSWERED':
+                    var player = this.gameState.players[event.playerId];
+                    var phone = this.gameState.phones[event.number];
+                    if (player && phone) {
+                        player.jumpToPhone(phone);
+                        phone.setStateAnswered(event.correct);
+                    }
+                    break;
+                case 'GAME_END':
+                    for (var key in this.gameState.phones) {
+                        this.gameState.phones[key].setStateAvailable();
+                    }
+                    for (var key2 in this.gameState.players) {
+                        this.gameState.players[key2].moveToExit();
+                    }
+                    break;
+            }
+            
+        }
+    }
+
+    class Simulator{
+        game: Game;
+        state: string;
+        timeouts: number[] = [];
+
+        constructor(game: Game) {
+            this.game = game;
+            this.state = 'OFF';
+            this.startSimulation();
+        }
+
+        startSimulation() {
+            var duration = 60 * 1000;
+            var intro = 6 * 1000;
+            var outro = 6 * 1000;
+            var gameStartEvent = {
+                type: 'GAME_START',
+                endTime: new Date(new Date().getTime() + duration),
                 players: [
                     { id: 1, name: 'Alice' },
                     { id: 2, name: 'Bertrand' },
@@ -37,20 +100,85 @@ module GestionAirTV {
                     { number: 10, x: 100, y: 200, orientation: Phone.Orientation.RIGHT }
                 ]
             };
-            this.gameState = new GameState(event)
-            this.state.remove('game');
-            this.state.add('game', this.gameState, true);
-        }
-        debugRinging(number:number) {
-            this.gameState.phones[number].setStateRinging();
-        }
-        debugAnswering(id: number, number: number) {
-            var player = this.gameState.players[id];
-            var phone = this.gameState.phones[number];
-            player.moveToPhone(phone);
-            phone.setStateWaitForPlayer(player);
+            //plan end of round
+            setTimeout(() => {
+                this.game.handleEvent({
+                    type: 'GAME_END'
+                })
+                this.state = 'OFF';
+                //cancel pending timeouts
+                this.timeouts.forEach(id => {
+                    clearTimeout(id);
+                });
+                this.timeouts.splice(0);
+                //timeout before next round
+                setTimeout(this.startSimulation.bind(this), outro);
+            }, duration);
+
+            //start
+            this.game.handleEvent(gameStartEvent);
+            //wait intro
+            setTimeout(() => {
+                this.state = 'ON';
+            }, intro);
+            
         }
 
+        update() {
+            var phone: Phone;
+            var player: Player;
+            if (this.game.gameState && this.state === 'ON') {
+                //make phones ring (max 2 phones not used)
+                var availablePhones:Phone[] = Object.keys(this.game.gameState.phones).map(k=> {
+                        return this.game.gameState.phones[k];
+                    }).filter(phone => {
+                        return phone.state === Phone.State.AVAILABLE;
+                    });
+                while (availablePhones.length > 2) {
+                    phone = this.game.rnd.pick(availablePhones);
+                    availablePhones.splice(availablePhones.indexOf(phone), 1);
+                    this.game.handleEvent({
+                        type: 'PHONE_RINGING',
+                        number: phone.number
+                });
+
+                }
+
+                //assign a free player to a ringing phone
+                var ringingPhones: Phone[] = Object.keys(this.game.gameState.phones).map(k=> {
+                        return this.game.gameState.phones[k];
+                    }).filter(phone => {
+                        return phone.state === Phone.State.RINGING;
+                    });
+
+
+                var freePlayers: Player[] = Object.keys(this.game.gameState.players).map(k=> {
+                        return this.game.gameState.players[k];
+                    }).filter(p => {
+                        return p.phone === null
+                    });
+
+                phone = this.game.rnd.pick(ringingPhones);
+                player = this.game.rnd.pick(freePlayers);
+                if (player && phone) {
+                    this.game.handleEvent({
+                        type: 'PLAYER_ANSWERING',
+                        playerId: player.id,
+                        number: phone.number,
+                        flag: this.game.rnd.pick(this.game.gameState.flags) //TODO depending on player already seen
+                    });
+                    // random time on phone and correct answer
+                    this.timeouts.push(setTimeout(() => {
+                        this.game.handleEvent({
+                            type: 'PLAYER_ANSWERED',
+                            playerId: player.id,
+                            number: phone.number,
+                            correct: this.game.rnd.integerInRange(0,1)
+                        })
+                    }, this.game.rnd.integerInRange(6,20) * 1000));
+                }
+            }
+        }
     }
 
     class MenuState extends Phaser.State {
@@ -64,10 +192,6 @@ module GestionAirTV {
             logo.anchor.setTo(0.5, 0.5);
             logo.scale.setTo(0.2, 0.2);
             this.game.add.tween(logo.scale).to({ x: 1, y: 1 }, 2000, Phaser.Easing.Bounce.Out, true);
-            logo.inputEnabled = true;
-            logo.events.onInputDown.add(function (sprite, pointer) {
-                gestionAirTV.handleEvent();
-            }, this);
         }
     }
 
@@ -82,7 +206,7 @@ module GestionAirTV {
         orientation: number;
     }
     interface PlayerConfig {
-        number: number;
+        id: number;
         name: string;
     }
     interface PhoneMap {
@@ -99,6 +223,7 @@ module GestionAirTV {
         players: PlayerMap = {};
         trailsBitmap: Phaser.BitmapData;
         game: Game;
+        flags: string[] = ['gb', 'de', 'fr'];
 
         constructor(init:GameStateConfig) {
             super();
@@ -111,7 +236,7 @@ module GestionAirTV {
             this.game.load.image('correct', 'images/checked21.png');
             this.game.load.image('wrong', 'images/delete102.png');
             this.game.load.bitmapFont('digital-7', 'fonts/digital-7.mono.png', 'fonts/digital-7.mono.xml');
-            ['gb','de','fr'].forEach(lg => {
+            this.flags.forEach(lg => {
                 this.game.load.image(lg, 'images/flags/' + lg + '.png');
             });
         }
@@ -161,14 +286,6 @@ module GestionAirTV {
             });
         }
 
-        update() {
-
-        }
-
-        render() {
-
-        }
-
     }
 
     class Phone extends Phaser.Group {
@@ -176,7 +293,6 @@ module GestionAirTV {
         state: Phone.State = Phone.State.AVAILABLE;
         flag: Phaser.Image;
         phone: Phaser.Sprite;
-        debugText: Phaser.Text;
         countDownText: Phaser.BitmapText;
         timer: number = -1;
         ringingTween: Phaser.Tween;
@@ -253,17 +369,15 @@ module GestionAirTV {
 
             this.phone.inputEnabled = true;
             this.phone.events.onInputUp.add((phone: Phone, pointer) => {
-                //this.position.setTo(pointer.x - this.phone.width / 2, pointer.y - this.phone.height / 2);
-                //this.phone.position.set(this.phone.width / 2, this.phone.height / 2);
                 if (this.timer === -1) {
                     this.setStateRinging();
                 }
                 if (this.timer > 2) {
-                    this.setStateAnswered();
+                    this.setStateAnswered(false);
                 }
                 if (isDoubleClick(pointer)) {
                     if (this.timer > 2) {
-                        this.setStateAnswered();
+                        this.setStateAnswered(false);
                     } else {
                         this.setStateAnswering();
                     }
@@ -271,17 +385,6 @@ module GestionAirTV {
                 }
             })
 
-            if (DEBUG) {
-                var g = this.game.add.graphics(this.target.x, this.target.y);
-                g.beginFill(0x000000);
-                g.drawCircle(0, 0, 4);
-                g.endFill();
-                this.debugText = new Phaser.Text(game, 0, this.phone.height, '', { font: "36px Arial", fill: "#000000" });
-                this.addChild(this.debugText);
-                
-                //this.phone.input.enableDrag(true);
-                
-            }
         }
 
         setStateRinging() {
@@ -297,27 +400,40 @@ module GestionAirTV {
             this.player = player;
         }
 
+        setFlag(flag: string) {
+            this.flag.loadTexture(flag, null);
+            this.flag.name = flag;
+        }
+
         setStateAnswering() {
             this.state = Phone.State.ANSWERING;
+            this.phone.tint = 0xffa200;
             this.ringingTween.pause();
             this.phone.scale.setTo(1, 1);
             this.timer = 0;
             this.countDownText.visible = true;
-            this.flag.loadTexture('fr', null);
             this.flag.visible = true;
         }
 
-        setStateAnswered() {
-            this.phone.tint = 0xdc1616;
+        setStateAnswered(correct:boolean) {
+            if (correct) {
+                this.phone.tint = 0x338000;
+            } else {
+                this.phone.tint = 0xdc1616;
+            }
             this.timer = -1;
             this.player.moveToHome();
-            //create checkmark anim?
-            //this.phone.tint = 0x338000;
+            
+            //TODO create checkmark anim? + add to playerScore
+
+
             setTimeout(() => { this.setStateAvailable() }, 2000);
             
         }
         setStateAvailable() {
             this.state = Phone.State.AVAILABLE;
+            this.ringingTween.pause();
+            this.phone.scale.setTo(1, 1);
             this.phone.tint = 0x000000;
             this.player = null;
             this.flag.visible = false;
@@ -327,21 +443,8 @@ module GestionAirTV {
 
 
         update() {
-            if (DEBUG) {
-                //this.debugText.setText(this.position.toString());
-            }
-
             if (this.state === Phone.State.WAITING && this.target.distance(this.player.position) < 1) {
                 this.setStateAnswering();
-            }
-            if (this.state === Phone.State.RINGING) {
-                var player = Object.keys((<GameState>this.game.state.getCurrentState()).players).map(k=> {
-                    return (<GameState>this.game.state.getCurrentState()).players[k];
-                }).filter(p => { return p.phone === null }).shift();
-                if (player) {
-                    player.moveToPhone(this);
-                    this.setStateWaitForPlayer(player);
-                }
             }
         }
     }
@@ -368,6 +471,7 @@ module GestionAirTV {
 
         constructor(game: Phaser.Game, conf: PlayerConfig, i: number, playerScore: PlayerScore) {
             super(game, 400, 700, new Phaser.RenderTexture(game, 100, 100, 'empty'))
+            this.id = conf.id;
             this.home = new Phaser.Point(game.world.width / 2 - ((-3 + i) * (Player.SIZE + 20)), game.world.height/3);
             this.anchor.setTo(0.5, 0.5);
             this.color = Player.colors[i];
@@ -382,10 +486,27 @@ module GestionAirTV {
             this.moveToTarget();
         }
 
+        jumpToPhone(phone: Phone) {
+            if (this.tween) {
+                this.tween.stop();
+            }
+            this.position.copyFrom(phone.target);
+            this.phone = phone;
+        }
+
         moveToHome() {
             this.target.copyFrom(this.home);
             this.phone = null;
             this.moveToTarget();
+        }
+
+        moveToExit() {
+            this.target.setTo(1400, 700);
+            this.phone = null;
+            this.moveToTarget();
+            this.tween.onComplete.add(()=>{
+                this.destroy();
+            });
         }
 
         moveToTarget() {
@@ -405,6 +526,7 @@ module GestionAirTV {
             trails.context.closePath();
             trails.context.fill();
             trails.dirty = true;
+
         }
     }
 

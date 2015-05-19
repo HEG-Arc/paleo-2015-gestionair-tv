@@ -7,18 +7,74 @@ var __extends = this.__extends || function (d, b) {
 };
 var GestionAirTV;
 (function (GestionAirTV) {
-    var DEBUG = false;
     var Game = (function (_super) {
         __extends(Game, _super);
         function Game() {
             _super.call(this, 1920, 1080, Phaser.CANVAS, 'content', new MenuState());
-            this.handleEvent();
         }
-        Game.prototype.handleEvent = function () {
-            var event = {
-                type: 'Game',
-                state: 'start',
-                endTime: new Date(new Date().getTime() + 10000),
+        Game.prototype.boot = function () {
+            _super.prototype.boot.call(this);
+            this.simulator = new Simulator(this);
+        };
+        Game.prototype.update = function (time) {
+            _super.prototype.update.call(this, time);
+            this.simulator.update();
+        };
+        Game.prototype.handleEvent = function (event) {
+            switch (event.type) {
+                case 'GAME_START':
+                    this.gameState = new GameState(event);
+                    this.state.remove('game');
+                    this.state.add('game', this.gameState, true);
+                    break;
+                case 'PHONE_RINGING':
+                    this.gameState.phones[event.number].setStateRinging();
+                    break;
+                case 'PLAYER_ANSWERING':
+                    var player = this.gameState.players[event.playerId];
+                    var phone = this.gameState.phones[event.number];
+                    if (player && phone) {
+                        player.moveToPhone(phone);
+                        phone.setStateWaitForPlayer(player);
+                        phone.setFlag(event.flag);
+                    }
+                    break;
+                case 'PLAYER_ANSWERED':
+                    var player = this.gameState.players[event.playerId];
+                    var phone = this.gameState.phones[event.number];
+                    if (player && phone) {
+                        player.jumpToPhone(phone);
+                        phone.setStateAnswered(event.correct);
+                    }
+                    break;
+                case 'GAME_END':
+                    for (var key in this.gameState.phones) {
+                        this.gameState.phones[key].setStateAvailable();
+                    }
+                    for (var key2 in this.gameState.players) {
+                        this.gameState.players[key2].moveToExit();
+                    }
+                    break;
+            }
+        };
+        return Game;
+    })(Phaser.Game);
+    GestionAirTV.Game = Game;
+    var Simulator = (function () {
+        function Simulator(game) {
+            this.timeouts = [];
+            this.game = game;
+            this.state = 'OFF';
+            this.startSimulation();
+        }
+        Simulator.prototype.startSimulation = function () {
+            var _this = this;
+            var duration = 60 * 1000;
+            var intro = 6 * 1000;
+            var outro = 6 * 1000;
+            var gameStartEvent = {
+                type: 'GAME_START',
+                endTime: new Date(new Date().getTime() + duration),
                 players: [
                     { id: 1, name: 'Alice' },
                     { id: 2, name: 'Bertrand' },
@@ -40,22 +96,80 @@ var GestionAirTV;
                     { number: 10, x: 100, y: 200, orientation: 1 /* RIGHT */ }
                 ]
             };
-            this.gameState = new GameState(event);
-            this.state.remove('game');
-            this.state.add('game', this.gameState, true);
+            //plan end of round
+            setTimeout(function () {
+                _this.game.handleEvent({
+                    type: 'GAME_END'
+                });
+                _this.state = 'OFF';
+                //cancel pending timeouts
+                _this.timeouts.forEach(function (id) {
+                    clearTimeout(id);
+                });
+                _this.timeouts.splice(0);
+                //timeout before next round
+                setTimeout(_this.startSimulation.bind(_this), outro);
+            }, duration);
+            //start
+            this.game.handleEvent(gameStartEvent);
+            //wait intro
+            setTimeout(function () {
+                _this.state = 'ON';
+            }, intro);
         };
-        Game.prototype.debugRinging = function (number) {
-            this.gameState.phones[number].setStateRinging();
+        Simulator.prototype.update = function () {
+            var _this = this;
+            var phone;
+            var player;
+            if (this.game.gameState && this.state === 'ON') {
+                //make phones ring (max 2 phones not used)
+                var availablePhones = Object.keys(this.game.gameState.phones).map(function (k) {
+                    return _this.game.gameState.phones[k];
+                }).filter(function (phone) {
+                    return phone.state === 0 /* AVAILABLE */;
+                });
+                while (availablePhones.length > 2) {
+                    phone = this.game.rnd.pick(availablePhones);
+                    availablePhones.splice(availablePhones.indexOf(phone), 1);
+                    this.game.handleEvent({
+                        type: 'PHONE_RINGING',
+                        number: phone.number
+                    });
+                }
+                //assign a free player to a ringing phone
+                var ringingPhones = Object.keys(this.game.gameState.phones).map(function (k) {
+                    return _this.game.gameState.phones[k];
+                }).filter(function (phone) {
+                    return phone.state === 4 /* RINGING */;
+                });
+                var freePlayers = Object.keys(this.game.gameState.players).map(function (k) {
+                    return _this.game.gameState.players[k];
+                }).filter(function (p) {
+                    return p.phone === null;
+                });
+                phone = this.game.rnd.pick(ringingPhones);
+                player = this.game.rnd.pick(freePlayers);
+                if (player && phone) {
+                    this.game.handleEvent({
+                        type: 'PLAYER_ANSWERING',
+                        playerId: player.id,
+                        number: phone.number,
+                        flag: this.game.rnd.pick(this.game.gameState.flags) //TODO depending on player already seen
+                    });
+                    // random time on phone and correct answer
+                    this.timeouts.push(setTimeout(function () {
+                        _this.game.handleEvent({
+                            type: 'PLAYER_ANSWERED',
+                            playerId: player.id,
+                            number: phone.number,
+                            correct: _this.game.rnd.integerInRange(0, 1)
+                        });
+                    }, this.game.rnd.integerInRange(6, 20) * 1000));
+                }
+            }
         };
-        Game.prototype.debugAnswering = function (id, number) {
-            var player = this.gameState.players[id];
-            var phone = this.gameState.phones[number];
-            player.moveToPhone(phone);
-            phone.setStateWaitForPlayer(player);
-        };
-        return Game;
-    })(Phaser.Game);
-    GestionAirTV.Game = Game;
+        return Simulator;
+    })();
     var MenuState = (function (_super) {
         __extends(MenuState, _super);
         function MenuState() {
@@ -70,10 +184,6 @@ var GestionAirTV;
             logo.anchor.setTo(0.5, 0.5);
             logo.scale.setTo(0.2, 0.2);
             this.game.add.tween(logo.scale).to({ x: 1, y: 1 }, 2000, Phaser.Easing.Bounce.Out, true);
-            logo.inputEnabled = true;
-            logo.events.onInputDown.add(function (sprite, pointer) {
-                gestionAirTV.handleEvent();
-            }, this);
         };
         return MenuState;
     })(Phaser.State);
@@ -83,6 +193,7 @@ var GestionAirTV;
             _super.call(this);
             this.phones = {};
             this.players = {};
+            this.flags = ['gb', 'de', 'fr'];
             this.initData = init;
         }
         GameState.prototype.preload = function () {
@@ -92,7 +203,7 @@ var GestionAirTV;
             this.game.load.image('correct', 'images/checked21.png');
             this.game.load.image('wrong', 'images/delete102.png');
             this.game.load.bitmapFont('digital-7', 'fonts/digital-7.mono.png', 'fonts/digital-7.mono.xml');
-            ['gb', 'de', 'fr'].forEach(function (lg) {
+            this.flags.forEach(function (lg) {
                 _this.game.load.image(lg, 'images/flags/' + lg + '.png');
             });
         };
@@ -133,10 +244,6 @@ var GestionAirTV;
                     _this.add.existing(player);
                 }, _this);
             });
-        };
-        GameState.prototype.update = function () {
-        };
-        GameState.prototype.render = function () {
         };
         return GameState;
     })(Phaser.State);
@@ -211,31 +318,21 @@ var GestionAirTV;
             }
             this.phone.inputEnabled = true;
             this.phone.events.onInputUp.add(function (phone, pointer) {
-                //this.position.setTo(pointer.x - this.phone.width / 2, pointer.y - this.phone.height / 2);
-                //this.phone.position.set(this.phone.width / 2, this.phone.height / 2);
                 if (_this.timer === -1) {
                     _this.setStateRinging();
                 }
                 if (_this.timer > 2) {
-                    _this.setStateAnswered();
+                    _this.setStateAnswered(false);
                 }
                 if (isDoubleClick(pointer)) {
                     if (_this.timer > 2) {
-                        _this.setStateAnswered();
+                        _this.setStateAnswered(false);
                     }
                     else {
                         _this.setStateAnswering();
                     }
                 }
             });
-            if (DEBUG) {
-                var g = this.game.add.graphics(this.target.x, this.target.y);
-                g.beginFill(0x000000);
-                g.drawCircle(0, 0, 4);
-                g.endFill();
-                this.debugText = new Phaser.Text(game, 0, this.phone.height, '', { font: "36px Arial", fill: "#000000" });
-                this.addChild(this.debugText);
-            }
         }
         Phone.prototype.setStateRinging = function () {
             this.state = 4 /* RINGING */;
@@ -248,28 +345,38 @@ var GestionAirTV;
             this.state = 9 /* WAITING */;
             this.player = player;
         };
+        Phone.prototype.setFlag = function (flag) {
+            this.flag.loadTexture(flag, null);
+            this.flag.name = flag;
+        };
         Phone.prototype.setStateAnswering = function () {
             this.state = 8 /* ANSWERING */;
+            this.phone.tint = 0xffa200;
             this.ringingTween.pause();
             this.phone.scale.setTo(1, 1);
             this.timer = 0;
             this.countDownText.visible = true;
-            this.flag.loadTexture('fr', null);
             this.flag.visible = true;
         };
-        Phone.prototype.setStateAnswered = function () {
+        Phone.prototype.setStateAnswered = function (correct) {
             var _this = this;
-            this.phone.tint = 0xdc1616;
+            if (correct) {
+                this.phone.tint = 0x338000;
+            }
+            else {
+                this.phone.tint = 0xdc1616;
+            }
             this.timer = -1;
             this.player.moveToHome();
-            //create checkmark anim?
-            //this.phone.tint = 0x338000;
+            //TODO create checkmark anim? + add to playerScore
             setTimeout(function () {
                 _this.setStateAvailable();
             }, 2000);
         };
         Phone.prototype.setStateAvailable = function () {
             this.state = 0 /* AVAILABLE */;
+            this.ringingTween.pause();
+            this.phone.scale.setTo(1, 1);
             this.phone.tint = 0x000000;
             this.player = null;
             this.flag.visible = false;
@@ -277,22 +384,8 @@ var GestionAirTV;
             this.timer = -1;
         };
         Phone.prototype.update = function () {
-            var _this = this;
-            if (DEBUG) {
-            }
             if (this.state === 9 /* WAITING */ && this.target.distance(this.player.position) < 1) {
                 this.setStateAnswering();
-            }
-            if (this.state === 4 /* RINGING */) {
-                var player = Object.keys(this.game.state.getCurrentState().players).map(function (k) {
-                    return _this.game.state.getCurrentState().players[k];
-                }).filter(function (p) {
-                    return p.phone === null;
-                }).shift();
-                if (player) {
-                    player.moveToPhone(this);
-                    this.setStateWaitForPlayer(player);
-                }
             }
         };
         return Phone;
@@ -322,6 +415,7 @@ var GestionAirTV;
             this.score = 0;
             this.target = new Phaser.Point;
             this.phone = null;
+            this.id = conf.id;
             this.home = new Phaser.Point(game.world.width / 2 - ((-3 + i) * (Player.SIZE + 20)), game.world.height / 3);
             this.anchor.setTo(0.5, 0.5);
             this.color = Player.colors[i];
@@ -334,10 +428,26 @@ var GestionAirTV;
             this.phone = phone;
             this.moveToTarget();
         };
+        Player.prototype.jumpToPhone = function (phone) {
+            if (this.tween) {
+                this.tween.stop();
+            }
+            this.position.copyFrom(phone.target);
+            this.phone = phone;
+        };
         Player.prototype.moveToHome = function () {
             this.target.copyFrom(this.home);
             this.phone = null;
             this.moveToTarget();
+        };
+        Player.prototype.moveToExit = function () {
+            var _this = this;
+            this.target.setTo(1400, 700);
+            this.phone = null;
+            this.moveToTarget();
+            this.tween.onComplete.add(function () {
+                _this.destroy();
+            });
         };
         Player.prototype.moveToTarget = function () {
             if (this.tween) {
