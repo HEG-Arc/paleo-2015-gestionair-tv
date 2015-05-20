@@ -78,7 +78,7 @@ module GestionAirTV {
             var outro = 6 * 1000;
             var gameStartEvent = {
                 type: 'GAME_START',
-                endTime: new Date(new Date().getTime() + duration),
+                endTime: new Date(new Date().getTime() + duration+intro),
                 players: [
                     { id: 1, name: 'Alice' },
                     { id: 2, name: 'Bertrand' },
@@ -181,6 +181,12 @@ module GestionAirTV {
         }
     }
 
+    export module Game {
+        export var COLOR_CORRECT: number = 0x338000;
+        export var COLOR_WRONG: number = 0xdc1616;
+
+    }
+
     class MenuState extends Phaser.State {
         preload() {
             this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
@@ -198,6 +204,7 @@ module GestionAirTV {
     interface GameStateConfig {
         players: Array<any>;
         phones: Array<PhoneConfig>;
+        endTime: Date;
     }
     interface PhoneConfig {
         number: number;
@@ -224,10 +231,13 @@ module GestionAirTV {
         trailsBitmap: Phaser.BitmapData;
         game: Game;
         flags: string[] = ['gb', 'de', 'fr'];
+        progressBar: Phaser.Graphics;
+        duration: number;
 
         constructor(init:GameStateConfig) {
             super();
             this.initData = init;
+            this.duration = this.initData.endTime.getTime() - new Date().getTime();
         }
 
         preload() {
@@ -263,6 +273,11 @@ module GestionAirTV {
 
             this.game.add.text(1630, 1000, 'Gestion\'Air', { font: "48px Verdana", fill: "#ffffff" });
             
+            this.progressBar = this.game.add.graphics(100, 30);
+            this.progressBar.beginFill(0xff0000);
+            this.progressBar.drawRect(0, 0, 1720, 20);
+            this.progressBar.endFill();
+
             this.trailsBitmap = this.game.add.bitmapData(1720, 700);
             this.game.add.image(100, 50, this.trailsBitmap, null);
             
@@ -284,6 +299,9 @@ module GestionAirTV {
                 }, this);
                 
             });
+        }
+        update() {
+            this.progressBar.width = Math.max(Math.round(1720 * ((this.initData.endTime.getTime() - new Date().getTime()) / this.duration)),0);
         }
 
     }
@@ -417,15 +435,14 @@ module GestionAirTV {
 
         setStateAnswered(correct:boolean) {
             if (correct) {
-                this.phone.tint = 0x338000;
+                this.phone.tint = Game.COLOR_CORRECT;
             } else {
-                this.phone.tint = 0xdc1616;
+                this.phone.tint = Game.COLOR_WRONG;
             }
             this.timer = -1;
             this.player.moveToHome();
-            
             //TODO create checkmark anim? + add to playerScore
-
+            this.player.playerScore.addAnswer(this.flag.name, correct);
 
             setTimeout(() => { this.setStateAvailable() }, 2000);
             
@@ -581,23 +598,26 @@ module GestionAirTV {
 
     class PlayerScore extends Phaser.Graphics {
 
+        answerCount:number = 0;
 
         constructor(game: Phaser.Game, conf:PlayerConfig, i: number) {
             super(game,(i % 3) * 500 + 200, 850 + (i>2 ? 150 : 0));
             game.state.getCurrentState().add.existing(this);
             this.addChild(new PlayerIcon(game, 0, 0, i, Player.colors[i]));
-            var text = new Phaser.Text(game, 80, -50, conf.name, { font: "48px Arial", fill: "#ffffff" });
+            var text = new Phaser.Text(game, 80, -56, conf.name, { font: "48px Arial", fill: "#ffffff" });
                 text.setShadow(2, 2, 'rgba(0, 0, 0, 0.5)');
             this.addChild(text);
         }
 
-        addAnswer() {
-            /*
-            var correct = this.add.sprite(400, 400, 'correct');
-            correct.tint = 0x00ff00;
-            var wrong = this.add.sprite(400, 800, 'wrong');
-            wrong.tint = 0xff0000;
-            */
+        addAnswer(flagLang:string, correct:boolean) {
+            var flag: Phaser.Sprite = this.game.make.sprite(80 + 80*this.answerCount, 0, flagLang);
+            flag.scale.set(0.1);
+            this.addChild(flag);
+            var check: Phaser.Sprite = this.game.make.sprite(90 + 80* this.answerCount, 10, correct ? 'correct' : 'wrong');
+            check.scale.set(0.08);
+            check.tint = correct ? Game.COLOR_CORRECT : Game.COLOR_WRONG;
+            this.addChild(check);
+            this.answerCount++;
         }
     }
 
