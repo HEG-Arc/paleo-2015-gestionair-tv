@@ -74,7 +74,7 @@ var GestionAirTV;
             var outro = 6 * 1000;
             var gameStartEvent = {
                 type: 'GAME_START',
-                endTime: new Date(new Date().getTime() + duration),
+                endTime: new Date(new Date().getTime() + duration + intro),
                 players: [
                     { id: 1, name: 'Alice' },
                     { id: 2, name: 'Bertrand' },
@@ -170,6 +170,11 @@ var GestionAirTV;
         };
         return Simulator;
     })();
+    var Game;
+    (function (Game) {
+        Game.COLOR_CORRECT = 0x338000;
+        Game.COLOR_WRONG = 0xdc1616;
+    })(Game = GestionAirTV.Game || (GestionAirTV.Game = {}));
     var MenuState = (function (_super) {
         __extends(MenuState, _super);
         function MenuState() {
@@ -195,6 +200,7 @@ var GestionAirTV;
             this.players = {};
             this.flags = ['gb', 'de', 'fr'];
             this.initData = init;
+            this.duration = this.initData.endTime.getTime() - new Date().getTime();
         }
         GameState.prototype.preload = function () {
             var _this = this;
@@ -226,6 +232,10 @@ var GestionAirTV;
             back.drawRect(0, 0, 200, 20);
             back.endFill();
             this.game.add.text(1630, 1000, 'Gestion\'Air', { font: "48px Verdana", fill: "#ffffff" });
+            this.progressBar = this.game.add.graphics(100, 30);
+            this.progressBar.beginFill(0xff0000);
+            this.progressBar.drawRect(0, 0, 1720, 20);
+            this.progressBar.endFill();
             this.trailsBitmap = this.game.add.bitmapData(1720, 700);
             this.game.add.image(100, 50, this.trailsBitmap, null);
             this.initData.phones.forEach(function (phoneData) {
@@ -244,6 +254,9 @@ var GestionAirTV;
                     _this.add.existing(player);
                 }, _this);
             });
+        };
+        GameState.prototype.update = function () {
+            this.progressBar.width = Math.max(Math.round(1720 * ((this.initData.endTime.getTime() - new Date().getTime()) / this.duration)), 0);
         };
         return GameState;
     })(Phaser.State);
@@ -361,14 +374,15 @@ var GestionAirTV;
         Phone.prototype.setStateAnswered = function (correct) {
             var _this = this;
             if (correct) {
-                this.phone.tint = 0x338000;
+                this.phone.tint = Game.COLOR_CORRECT;
             }
             else {
-                this.phone.tint = 0xdc1616;
+                this.phone.tint = Game.COLOR_WRONG;
             }
             this.timer = -1;
             this.player.moveToHome();
             //TODO create checkmark anim? + add to playerScore
+            this.player.playerScore.addAnswer(this.flag.name, correct);
             setTimeout(function () {
                 _this.setStateAvailable();
             }, 2000);
@@ -524,19 +538,22 @@ var GestionAirTV;
         __extends(PlayerScore, _super);
         function PlayerScore(game, conf, i) {
             _super.call(this, game, (i % 3) * 500 + 200, 850 + (i > 2 ? 150 : 0));
+            this.answerCount = 0;
             game.state.getCurrentState().add.existing(this);
             this.addChild(new PlayerIcon(game, 0, 0, i, Player.colors[i]));
-            var text = new Phaser.Text(game, 80, -50, conf.name, { font: "48px Arial", fill: "#ffffff" });
+            var text = new Phaser.Text(game, 80, -56, conf.name, { font: "48px Arial", fill: "#ffffff" });
             text.setShadow(2, 2, 'rgba(0, 0, 0, 0.5)');
             this.addChild(text);
         }
-        PlayerScore.prototype.addAnswer = function () {
-            /*
-            var correct = this.add.sprite(400, 400, 'correct');
-            correct.tint = 0x00ff00;
-            var wrong = this.add.sprite(400, 800, 'wrong');
-            wrong.tint = 0xff0000;
-            */
+        PlayerScore.prototype.addAnswer = function (flagLang, correct) {
+            var flag = this.game.make.sprite(80 + 80 * this.answerCount, 0, flagLang);
+            flag.scale.set(0.1);
+            this.addChild(flag);
+            var check = this.game.make.sprite(90 + 80 * this.answerCount, 10, correct ? 'correct' : 'wrong');
+            check.scale.set(0.08);
+            check.tint = correct ? Game.COLOR_CORRECT : Game.COLOR_WRONG;
+            this.addChild(check);
+            this.answerCount++;
         };
         return PlayerScore;
     })(Phaser.Graphics);
