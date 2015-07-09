@@ -222,6 +222,8 @@
     <Content Include="images\phone72.png" />
     <Content Include="index.html" />
     <Content Include="phaser.js" />
+    <Content Include="socks.js" />
+    <Content Include="stomp.js" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>

@@ -14,11 +14,33 @@ var GestionAirTV;
         }
         Game.prototype.boot = function () {
             _super.prototype.boot.call(this);
-            this.simulator = new Simulator(this);
+            //this.simulator = new Simulator(this);
+            var ws = new SockJS('http://192.168.1.1:15674/stomp');
+            var client = Stomp.over(ws);
+            //disable unsupported heart-beat
+            client.heartbeat.outgoing = 0;
+            client.heartbeat.incoming = 0;
+            client.debug = function (m, p) {
+                console.log(m, p);
+            };
+            var onConnect = function (x) {
+                client.subscribe('/queue/simulator', function (d) {
+                    try {
+                        this.handleEvent(JSON.parse(d.body));
+                    }
+                    catch (e) {
+                        console.log('error', e);
+                        console.log(d.body);
+                    }
+                });
+            };
+            client.connect('guest', 'guest', onConnect, function () {
+                console.log('connect error');
+            }, '/');
         };
         Game.prototype.update = function (time) {
             _super.prototype.update.call(this, time);
-            this.simulator.update();
+            //this.simulator.update();
         };
         Game.prototype.handleEvent = function (event) {
             switch (event.type) {
@@ -74,7 +96,7 @@ var GestionAirTV;
             var outro = 6 * 1000;
             var gameStartEvent = {
                 type: 'GAME_START',
-                endTime: new Date(new Date().getTime() + duration + intro),
+                endTime: new Date(new Date().getTime() + duration + intro).toISOString(),
                 players: [
                     { id: 1, name: 'Alice' },
                     { id: 2, name: 'Bertrand' },
@@ -200,6 +222,7 @@ var GestionAirTV;
             this.players = {};
             this.flags = ['gb', 'de', 'fr'];
             this.initData = init;
+            this.initData.endTime = new Date(this.initData.endTime);
             this.duration = this.initData.endTime.getTime() - new Date().getTime();
         }
         GameState.prototype.preload = function () {

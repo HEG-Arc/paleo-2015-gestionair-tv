@@ -1,6 +1,10 @@
 ﻿/// <reference path='phaser.comments.d.ts' />
 
 module GestionAirTV {
+
+    declare var SockJS;
+    declare var Stomp;
+
     export class Game extends Phaser.Game {
 
         simulator: Simulator;
@@ -11,12 +15,31 @@ module GestionAirTV {
 
         boot() {
             super.boot();
-            this.simulator = new Simulator(this);
+            //this.simulator = new Simulator(this);
+            var ws = new SockJS('http://192.168.1.1:15674/stomp');
+            var client = Stomp.over(ws);
+            //disable unsupported heart-beat
+            client.heartbeat.outgoing = 0;
+            client.heartbeat.incoming = 0;
+            client.debug = function (m, p) {
+                console.log(m, p);
+            };
+            var onConnect = function (x) {
+                client.subscribe('/queue/simulator', function (d) {
+                    try {
+                        this.handleEvent(JSON.parse(d.body));
+                    } catch (e) {
+                        console.log('error', e);
+                        console.log(d.body);
+                    }
+                });
+            };
+            client.connect('guest', 'guest', onConnect, function () { console.log('connect error'); }, '/');
         }
 
         update(time) {
             super.update(time);
-            this.simulator.update();
+            //this.simulator.update();
         }
 
         gameState: GameState;
@@ -24,7 +47,7 @@ module GestionAirTV {
         handleEvent(event) {
             switch (event.type) {
                 case 'GAME_START':
-                    this.gameState = new GameState(event)
+                    this.gameState = new GameState(event);
                     this.state.remove('game');
                     this.state.add('game', this.gameState, true);
                     break;
@@ -78,7 +101,7 @@ module GestionAirTV {
             var outro = 6 * 1000;
             var gameStartEvent = {
                 type: 'GAME_START',
-                endTime: new Date(new Date().getTime() + duration+intro),
+                endTime: new Date(new Date().getTime() + duration+intro).toISOString(),
                 players: [
                     { id: 1, name: 'Alice' },
                     { id: 2, name: 'Bertrand' },
@@ -204,7 +227,7 @@ module GestionAirTV {
     interface GameStateConfig {
         players: Array<any>;
         phones: Array<PhoneConfig>;
-        endTime: Date;
+        endTime: any;
     }
     interface PhoneConfig {
         number: number;
@@ -237,6 +260,7 @@ module GestionAirTV {
         constructor(init:GameStateConfig) {
             super();
             this.initData = init;
+            this.initData.endTime = new Date(this.initData.endTime);
             this.duration = this.initData.endTime.getTime() - new Date().getTime();
         }
 
