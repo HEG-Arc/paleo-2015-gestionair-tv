@@ -10,6 +10,7 @@ module GestionAirTV {
         simulator: Simulator;
         scoreboard: Scoreboard;
         menuState: MenuState;
+        menuTimeout: number;
 
         constructor() {
             this.menuState = new MenuState();
@@ -22,6 +23,7 @@ module GestionAirTV {
             this.scoreboard.toggle(false);
 
             this.input.keyboard.enabled = true;
+            this.input.resetLocked = true;
             var enterHandler = this.input.keyboard.addKey(Phaser.Keyboard.ENTER);
             enterHandler.onDown.add(()=>{
                 this.scoreboard.toggle(undefined);
@@ -83,6 +85,10 @@ module GestionAirTV {
         handleEvent(event) {
             switch (event.type) {
                 case 'GAME_START':
+                    if(this.menuTimeout){
+                       clearTimeout(this.menuTimeout);
+                       this.menuTimeout = undefined;
+                    }
                     this.gameState = new GameState(event);
                     this.state.remove('game');
                     this.state.add('game', this.gameState, true);
@@ -97,20 +103,24 @@ module GestionAirTV {
                     }
                     break;
                 case 'PLAYER_ANSWERING':
-                    var player = this.gameState.players[event.playerId];
-                    var phone = this.gameState.phones[event.number];
-                    if (player && phone) {
-                        player.moveToPhone(phone);
-                        phone.setStateWaitForPlayer(player);
-                        phone.setFlag(event.flag);
+                    if(this.gameState && this.gameState.players && this.gameState.phones){
+                        var player = this.gameState.players[event.playerId];
+                        var phone = this.gameState.phones[event.number];
+                        if (player && phone) {
+                            player.moveToPhone(phone);
+                            phone.setStateWaitForPlayer(player);
+                            phone.setFlag(event.flag);
+                        }
                     }
                     break;
                 case 'PLAYER_ANSWERED':
-                    var player = this.gameState.players[event.playerId];
-                    var phone = this.gameState.phones[event.number];
-                    if (player && phone) {
-                        player.jumpToPhone(phone);
-                        phone.setStateAnswered(event.correct);
+                    if(this.gameState && this.gameState.players && this.gameState.phones){
+                        var player = this.gameState.players[event.playerId];
+                        var phone = this.gameState.phones[event.number];
+                        if (player && phone) {
+                            player.jumpToPhone(phone);
+                            phone.setStateAnswered(event.correct);
+                        }
                     }
                     break;
                 case 'GAME_END':
@@ -120,13 +130,12 @@ module GestionAirTV {
                     for (var key2 in this.gameState.players) {
                         this.gameState.players[key2].moveToExit();
                     }
-                    setTimeout(()=>{
+                    this.menuTimeout = setTimeout(()=>{
                         this.gameState = undefined;
                         this.state.remove('game');
                         this.state.add('game', this.menuState, true);
                     }, 30000);
                     this.scoreboard.build(event.scores);
-
                     break;
             }
 
