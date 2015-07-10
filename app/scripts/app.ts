@@ -15,7 +15,7 @@ module GestionAirTV {
 
         boot() {
             super.boot();
-            this.simulator = new Simulator(this);
+            //this.simulator = new Simulator(this);
             /*
             var ws = new SockJS('http://192.168.1.1:15674/stomp');
             var client = Stomp.over(ws);
@@ -217,14 +217,12 @@ module GestionAirTV {
     class MenuState extends Phaser.State {
         preload() {
             this.game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
-            this.game.load.image('logo', 'images/phaser-logo-small.png');
+            this.game.load.image('logo', 'images/background.png');
         }
 
         create() {
             var logo = this.game.add.sprite(this.game.world.centerX, this.game.world.centerY, 'logo');
             logo.anchor.setTo(0.5, 0.5);
-            logo.scale.setTo(0.2, 0.2);
-            this.game.add.tween(logo.scale).to({ x: 1, y: 1 }, 2000, Phaser.Easing.Bounce.Out, true);
         }
     }
 
@@ -273,14 +271,14 @@ module GestionAirTV {
             this.game.load.image('phone', 'images/phone72.png');
             this.game.load.image('correct', 'images/checked21.png');
             this.game.load.image('wrong', 'images/delete102.png');
-            this.game.load.bitmapFont('digital-7', 'fonts/digital-7.mono.png', 'fonts/digital-7.mono.xml');
+            this.game.load.bitmapFont('digital-7', 'images/fonts/digital-7.mono.png', 'images/fonts/digital-7.mono.xml');
             this.flags.forEach(lg => {
                 this.game.load.image(lg, 'images/flags/' + lg + '.png');
             });
         }
 
         create() {
-            this.game.stage.backgroundColor = 0x10a2ff;
+            this.game.stage.backgroundColor = 0x0098D8;
 
             var back = this.game.add.graphics(100, 50);
             back.beginFill(0xffffe8);
@@ -299,7 +297,7 @@ module GestionAirTV {
             back.drawRect(0, 0, 200, 20);
             back.endFill();
 
-            this.game.add.text(1630, 1000, 'Gestion\'Air', { font: "48px Verdana", fill: "#ffffff" });
+            this.game.add.text(1630, 1000, 'Gestion´Air', { font: "48px Verdana", fill: "#ffffff" });
 
             this.progressBar = this.game.add.graphics(100, 30);
             this.progressBar.beginFill(0xff0000);
