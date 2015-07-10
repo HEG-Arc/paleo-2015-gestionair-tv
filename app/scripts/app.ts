@@ -9,16 +9,17 @@ module GestionAirTV {
 
         simulator: Simulator;
         scoreboard: Scoreboard;
+        menuState: MenuState;
 
         constructor() {
-            super(1920, 1080, Phaser.CANVAS, 'content', new MenuState());
+            this.menuState = new MenuState();
+            super(1920, 1080, Phaser.CANVAS, 'content', this.menuState);
         }
 
         boot() {
             super.boot();
             this.scoreboard = new Scoreboard();
-            //test
-            this.scoreboard.build();
+            this.scoreboard.toggle(false);
 
             this.input.keyboard.enabled = true;
             var enterHandler = this.input.keyboard.addKey(Phaser.Keyboard.ENTER);
@@ -36,8 +37,8 @@ module GestionAirTV {
         serverConnection(){
             var client;
 
-            var onConnect = function () {
-                client.subscribe('/queue/simulator', function (message) {
+            var onConnect =  () => {
+                client.subscribe('/queue/simulator', (message) => {
                     try {
                         this.handleEvent(JSON.parse(message.body));
                     } catch (e) {
@@ -47,21 +48,22 @@ module GestionAirTV {
                 });
             };
 
-            var debug = function(m){
+            var debug = (m) => {
                 console.log(m);
             };
 
-            var stompConnect = function(){
+            var stompConnect = () => {
                 var ws = new SockJS('http://192.168.1.1:15674/stomp');
                 client = Stomp.over(ws);
+                
                 //disable unsupported heart-beat
-                //client.heartbeat.outgoing = 0;
-                //client.heartbeat.incoming = 0;
+                client.heartbeat.outgoing = 0;
+                client.heartbeat.incoming = 0;
                 client.debug = debug;
                 client.connect('guest', 'guest', onConnect, failureConnect, '/');
             }
 
-            var failureConnect = function(){
+            var failureConnect = () => {
                 console.log('connect error, retrying in 10');
                 setTimeout(stompConnect, 10000);
             };
@@ -84,9 +86,15 @@ module GestionAirTV {
                     this.gameState = new GameState(event);
                     this.state.remove('game');
                     this.state.add('game', this.gameState, true);
+                    //auto hide scores after delay
+                    setTimeout(()=>{
+                        this.scoreboard.toggle(false);
+                    }, 20000);
                     break;
                 case 'PHONE_RINGING':
-                    this.gameState.phones[event.number].setStateRinging();
+                    if(this.gameState && this.gameState.phones[event.number]){
+                        this.gameState.phones[event.number].setStateRinging();
+                    }
                     break;
                 case 'PLAYER_ANSWERING':
                     var player = this.gameState.players[event.playerId];
@@ -112,8 +120,12 @@ module GestionAirTV {
                     for (var key2 in this.gameState.players) {
                         this.gameState.players[key2].moveToExit();
                     }
-                    //TODO: get data
-                    this.scoreboard.build();
+                    setTimeout(()=>{
+                        this.gameState = undefined;
+                        this.state.remove('game');
+                        this.state.add('game', this.menuState, true);
+                    }, 30000);
+                    this.scoreboard.build(event.scores);
 
                     break;
             }
@@ -131,10 +143,15 @@ module GestionAirTV {
             this.$tbody = this.$element.find('tbody');
         }
 
-        build(){
+        build(scores){
             this.$tbody.empty();
-            [{name: 'a', score: 43}, {name: 'b', score: 23}].forEach((item, idx) => {
-                this.$tbody.append('<tr><td>' + (idx + 1) + '</td><td>' + item.name + '</td><td>' + item.score + '</td></tr>');
+            scores.forEach((item, idx) => {
+                this.$tbody.append('<tr><td>' + (idx + 1) + '</td><td>' + item.name
+                    + '<div>'
+                    + item.languages.map((code:any)=>{
+                        return '<span class="flag"><span class="' + (code.correct ? 'correct' : 'wrong') + '"></span><img src="images/flags/' + code.lang + '.png"></span>'
+                    }).join('')
+                    + '</div></td><td>' + item.score + '</td></tr>');
             });
             this.toggle(true);
         }
@@ -193,7 +210,13 @@ module GestionAirTV {
             //plan end of round
             setTimeout(() => {
                 this.game.handleEvent({
-                    type: 'GAME_END'
+                    type: 'GAME_END',
+                    scores: [{name: 'a', score: 43, languages: [{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'b', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'c', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'd', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'e', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'f', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]}]
                 })
                 this.state = 'OFF';
                 //cancel pending timeouts
@@ -201,6 +224,7 @@ module GestionAirTV {
                     clearTimeout(id);
                 });
                 this.timeouts.splice(0);
+                
                 //timeout before next round
                 setTimeout(this.startSimulation.bind(this), outro);
             }, duration);

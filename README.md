@@ -60,7 +60,12 @@ playerAnsweredEvent = {
 ```javascript
 gameEndEvent = {
                     type: 'GAME_END'
-					//any info or final scores??
+					scores:[{name: 'a', score: 43, languages: [{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'b', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'c', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'd', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'e', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {name: 'f', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]}]
                 }
 ```
 

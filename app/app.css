@@ -19,11 +19,25 @@ span {
     font-size: 32pt;
 }
 
-#scoreboard table{
-    width: 40%;
-    margin: 100px auto;
+#box{
+    width: 60%;
+    margin: 40px auto;
     background-color: rgba(0,152,216,0.9);
     padding: 40px;
+}
+
+#box table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#scoreboard th{
+    text-align: left;
+    color: white;
+}
+
+#scoreboard tbody td{
+    padding: 10px 30px;
 }
 
 #scoreboard tbody tr:nth-child(odd){
@@ -32,4 +46,37 @@ span {
 
 #scoreboard tbody tr:nth-child(even){
     background-color: rgb(200,200,200);
+}
+#scoreboard tbody tr td:nth-child(3){
+    text-align: right;
+    font-weight: bold;
+}
+#scoreboard .flag{
+    padding: 10px;
+    position: relative;
+}
+#scoreboard .flag img{
+    width: 80px;
+}
+
+#scoreboard .flag .wrong, #scoreboard .flag .correct{
+    background-size: contain;
+    width: 40px;
+    height: 40px;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    z-index: 101;
+    background-repeat: no-repeat;
+    background-position: 0 0;
+}
+#scoreboard .flag .wrong{
+    background-color: #dc1616;
+    background-image:  url('../images/delete102.png');
+}
+
+#scoreboard .flag .correct{
+    background-color: #338800;
+    background-image:  url('../images/checked21.png');
+
 }
