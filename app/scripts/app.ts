@@ -15,28 +15,47 @@ module GestionAirTV {
 
         boot() {
             super.boot();
-            //this.simulator = new Simulator(this);
-            /*
-            var ws = new SockJS('http://192.168.1.1:15674/stomp');
-            var client = Stomp.over(ws);
-            //disable unsupported heart-beat
-            client.heartbeat.outgoing = 0;
-            client.heartbeat.incoming = 0;
-            client.debug = function (m, p) {
-                console.log(m, p);
-            };
-            var onConnect = function (x) {
-                client.subscribe('/queue/simulator', function (d) {
+            if(window.location.hash === '#sim'){
+                this.simulator = new Simulator(this);
+            }else{
+                this.serverConnection();
+            }
+        }
+
+        serverConnection(){
+            var client;
+
+            var onConnect = function () {
+                client.subscribe('/queue/simulator', function (message) {
                     try {
-                        this.handleEvent(JSON.parse(d.body));
+                        this.handleEvent(JSON.parse(message.body));
                     } catch (e) {
                         console.log('error', e);
-                        console.log(d.body);
+                        console.log(message.body);
                     }
                 });
             };
-            client.connect('guest', 'guest', onConnect, function () { console.log('connect error'); }, '/');
-            */
+
+            var debug = function(m){
+                console.log(m);
+            };
+
+            var stompConnect = function(){
+                var ws = new SockJS('http://192.168.1.1:15674/stomp');
+                client = Stomp.over(ws);
+                //disable unsupported heart-beat
+                //client.heartbeat.outgoing = 0;
+                //client.heartbeat.incoming = 0;
+                client.debug = debug;
+                client.connect('guest', 'guest', onConnect, failureConnect, '/');
+            }
+
+            var failureConnect = function(){
+                console.log('connect error, retrying in 10');
+                setTimeout(stompConnect, 10000);
+            };
+            
+            stompConnect();
         }
 
         update(time) {
