@@ -8,6 +8,7 @@ module GestionAirTV {
     export class Game extends Phaser.Game {
 
         simulator: Simulator;
+        scoreboard: Scoreboard;
 
         constructor() {
             super(1920, 1080, Phaser.CANVAS, 'content', new MenuState());
@@ -15,6 +16,16 @@ module GestionAirTV {
 
         boot() {
             super.boot();
+            this.scoreboard = new Scoreboard();
+            //test
+            this.scoreboard.build();
+
+            this.input.keyboard.enabled = true;
+            var enterHandler = this.input.keyboard.addKey(Phaser.Keyboard.ENTER);
+            enterHandler.onDown.add(()=>{
+                this.scoreboard.toggle(undefined);
+            });
+
             if(window.location.hash === '#sim'){
                 this.simulator = new Simulator(this);
             }else{
@@ -54,7 +65,7 @@ module GestionAirTV {
                 console.log('connect error, retrying in 10');
                 setTimeout(stompConnect, 10000);
             };
-            
+
             stompConnect();
         }
 
@@ -101,7 +112,40 @@ module GestionAirTV {
                     for (var key2 in this.gameState.players) {
                         this.gameState.players[key2].moveToExit();
                     }
+                    //TODO: get data
+                    this.scoreboard.build();
+
                     break;
+            }
+
+        }
+    }
+
+    class Scoreboard{
+
+        $element:JQuery;
+        $tbody:JQuery;
+
+        constructor(){
+            this.$element = jQuery('#scoreboard');
+            this.$tbody = this.$element.find('tbody');
+        }
+
+        build(){
+            this.$tbody.empty();
+            [{name: 'a', score: 43}, {name: 'b', score: 23}].forEach((item, idx) => {
+                this.$tbody.append('<tr><td>' + (idx + 1) + '</td><td>' + item.name + '</td><td>' + item.score + '</td></tr>');
+            });
+            this.toggle(true);
+        }
+
+        toggle(show){
+            if(show === undefined){
+                this.$element.fadeToggle()
+            }else if(show){
+                this.$element.fadeIn();
+            }else{
+                this.$element.fadeOut();
             }
 
         }
