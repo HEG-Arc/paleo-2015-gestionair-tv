@@ -4,11 +4,23 @@
   "description": "",
   "main": "app.js",
   "dependencies": {
-    "phaser": "^2.3.0",
-    "socks-client": "^1.1.4",
-    "stompjs": "^2.3.3"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-concurrent": "^1.0.0",
+    "grunt-contrib-clean": "^0.6.0",
+    "grunt-contrib-concat": "^0.5.1",
+    "grunt-contrib-connect": "^0.10.1",
+    "grunt-contrib-copy": "^0.8.0",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-newer": "^1.1.0",
+    "grunt-typescript": "^0.6.2",
+    "load-grunt-tasks": "^3.2.0",
+    "time-grunt": "^1.2.1",
+    "tslint": "^2.3.1-beta",
+    "grunt-tslint": "^2.3.1-beta",
+    "typescript": "1.5.0-beta"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -16,8 +28,7 @@
     "type": "git",
     "url": "https://github.com/HEG-Arc/paleo-2015-gestionair-tv.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Boris Fritscher",
   "bugs": {
     "url": "https://github.com/HEG-Arc/paleo-2015-gestionair-tv/issues"
   },
