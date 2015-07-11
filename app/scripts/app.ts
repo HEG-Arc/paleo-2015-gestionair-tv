@@ -362,7 +362,7 @@ module GestionAirTV {
         players: PlayerMap = {};
         trailsBitmap: Phaser.BitmapData;
         game: Game;
-        flags: string[] = ['gb', 'de', 'fr'];
+        flags: string[] = ['hr','ne','de','fr','es','it','pt','ro','ru','hu','ku','en','vn','ch'];
         progressBar: Phaser.Graphics;
         duration: number;
 
