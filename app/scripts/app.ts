@@ -40,6 +40,7 @@ module GestionAirTV {
             var client;
 
             var onConnect =  () => {
+                jQuery('#error').hide();
                 client.subscribe('/queue/simulator', (message) => {
                     try {
                         this.handleEvent(JSON.parse(message.body));
@@ -57,7 +58,7 @@ module GestionAirTV {
             var stompConnect = () => {
                 var ws = new SockJS('http://192.168.1.1:15674/stomp');
                 client = Stomp.over(ws);
-                
+
                 //disable unsupported heart-beat
                 client.heartbeat.outgoing = 0;
                 client.heartbeat.incoming = 0;
@@ -66,7 +67,7 @@ module GestionAirTV {
             }
 
             var failureConnect = () => {
-                console.log('connect error, retrying in 10');
+                jQuery('#error').text('connection error, retrying...').show();
                 setTimeout(stompConnect, 10000);
             };
 
@@ -233,9 +234,9 @@ module GestionAirTV {
                     clearTimeout(id);
                 });
                 this.timeouts.splice(0);
-                
+
                 //timeout before next round
-                setTimeout(this.startSimulation.bind(this), outro);
+                setTimeout(this.startSimulation.bind(this), outro + this.game.rnd.between(10,50)*1000);
             }, duration);
 
             //start

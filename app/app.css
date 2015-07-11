@@ -80,3 +80,13 @@ span {
     background-image:  url('../images/checked21.png');
 
 }
+
+#error {
+    position: fixed;
+    color: white;
+    background-color: #dc1616;
+    top:0;
+    right:0;
+    display: none;
+    padding: 5px;
+}
