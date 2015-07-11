@@ -62,7 +62,7 @@ module GestionAirTV {
                 //disable unsupported heart-beat
                 client.heartbeat.outgoing = 0;
                 client.heartbeat.incoming = 0;
-                client.debug = debug;
+                //client.debug = debug;
                 client.connect('guest', 'guest', onConnect, failureConnect, '/');
             }
 
