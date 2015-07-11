@@ -155,6 +155,9 @@ module GestionAirTV {
 
         constructor(){
             this.$element = jQuery('#scoreboard');
+            this.$element.click(() => {
+                this.toggle(false);
+            });
             this.$tbody = this.$element.find('tbody');
         }
 
