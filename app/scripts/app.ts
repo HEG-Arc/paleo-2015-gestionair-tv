@@ -482,7 +482,7 @@ module GestionAirTV {
             this.addChild(this.phone);
 
             this.flag = new Phaser.Image(game, 0, 0, 'fr', null);
-            this.flag.scale.setTo(0.2, 0.2);
+            this.flag.scale.setTo(1, 1);
             if (conf.orientation === Phone.Orientation.BOTTOM || conf.orientation === Phone.Orientation.TOP) {
                 this.flag.position.setTo(this.phone.width, 0);
             } else {
@@ -756,7 +756,7 @@ module GestionAirTV {
 
         addAnswer(flagLang:string, correct:boolean) {
             var flag: Phaser.Sprite = this.game.make.sprite(80 + 80*this.answerCount, 0, flagLang);
-            flag.scale.set(0.1);
+            flag.scale.set(0.5);
             this.addChild(flag);
             var check: Phaser.Sprite = this.game.make.sprite(90 + 80* this.answerCount, 10, correct ? 'correct' : 'wrong');
             check.scale.set(0.08);
