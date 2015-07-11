@@ -182,6 +182,7 @@ module GestionAirTV {
         game: Game;
         state: string;
         timeouts: number[] = [];
+        scores: any = {};
 
         constructor(game: Game) {
             this.game = game;
@@ -193,6 +194,12 @@ module GestionAirTV {
             var duration = 60 * 1000;
             var intro = 6 * 1000;
             var outro = 6 * 1000;
+            this.scores = [{name: 'Alice', score: 0, languages: []},
+                {name: 'Bertrand', score: 0, languages:[]},
+                {name: 'Charles', score: 0, languages:[]},
+                {name: 'Delphine', score: 0, languages:[]},
+                {name: 'Elisabeth', score: 0, languages:[]},
+                {name: 'Felicitas', score: 0, languages:[]}]
             var gameStartEvent = {
                 type: 'GAME_START',
                 endTime: new Date(new Date().getTime() + duration+intro).toISOString(),
@@ -219,14 +226,12 @@ module GestionAirTV {
             };
             //plan end of round
             setTimeout(() => {
+                //sort scores
                 this.game.handleEvent({
                     type: 'GAME_END',
-                    scores: [{name: 'a', score: 43, languages: [{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'b', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'c', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'd', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'e', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'f', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]}]
+                    scores: this.scores.sort(function(a,b){
+                        return b.score - a.score;
+                    })
                 })
                 this.state = 'OFF';
                 //cancel pending timeouts
@@ -285,19 +290,24 @@ module GestionAirTV {
                 phone = this.game.rnd.pick(ringingPhones);
                 player = this.game.rnd.pick(freePlayers);
                 if (player && phone) {
+                    var flag = this.game.rnd.pick(this.game.gameState.flags);
                     this.game.handleEvent({
                         type: 'PLAYER_ANSWERING',
                         playerId: player.id,
                         number: phone.number,
-                        flag: this.game.rnd.pick(this.game.gameState.flags) //TODO depending on player already seen
+                        flag: flag //TODO depending on player already seen
                     });
                     // random time on phone and correct answer
                     this.timeouts.push(setTimeout(() => {
+                        var correct = this.game.rnd.integerInRange(0,1);
+                        var score = this.scores[player.id-1];
+                        score.score +=correct;
+                        score.languages.push({lang: flag, correct: correct});
                         this.game.handleEvent({
                             type: 'PLAYER_ANSWERED',
                             playerId: player.id,
                             number: phone.number,
-                            correct: this.game.rnd.integerInRange(0,1)
+                            correct: correct
                         })
                     }, this.game.rnd.integerInRange(6,20) * 1000));
                 }
