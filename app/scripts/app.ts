@@ -423,7 +423,7 @@ module GestionAirTV {
             });
         }
         update() {
-            this.progressBar.width = Math.max(Math.round(1720 * ((this.initData.endTime.getTime() - new Date().getTime()) / this.duration)),0);
+            this.progressBar.width = Math.min(1720, Math.max(Math.round(1720 * ((this.initData.endTime.getTime() - new Date().getTime()) / this.duration)),0));
         }
 
     }
