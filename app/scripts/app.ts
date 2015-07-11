@@ -104,7 +104,8 @@ module GestionAirTV {
                     }
                     break;
                 case 'PHONE_STOPRINGING':
-                    if(this.gameState && this.gameState.phones[event.number]){
+                    if(this.gameState && this.gameState.phones[event.number] && 
+                        this.gameState.phones[event.number].state === Phone.State.RINGING){
                         this.gameState.phones[event.number].setStateAvailable();
                     }
                     break;
