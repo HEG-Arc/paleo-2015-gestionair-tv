@@ -141,7 +141,8 @@ module.exports = function (grunt) {
             '*.{ico,png,txt}',
             '.htaccess',
             '*.html',
-            'images/{,*/}*.{webp}',
+            '*.css',
+            'images/{,*/}*.*',
             'fonts/{,*/}*.*'
           ]
         }, {
@@ -149,13 +150,21 @@ module.exports = function (grunt) {
           cwd: '.tmp/images',
           dest: '<%= yeoman.dist %>/images',
           src: ['generated/*']
+        },{
+          expand: true,
+          cwd: '.',
+          dest: '<%= yeoman.dist %>',
+          src: [
+            'bower_components/jquery/dist/jquery.min.js',
+            'bower_components/phaser/build/phaser.min.js',
+            'bower_components/sockjs-client/dist/sockjs.min.js',
+            'bower_components/stomp-websocket/lib/stomp.min.js']
+        }, {
+          expand: true,
+          cwd: '.tmp/scripts',
+          dest: '<%= yeoman.dist %>/scripts',
+          src: '{,*/}*.js'
         }]
-      },
-      styles: {
-        expand: true,
-        cwd: '<%= yeoman.app %>/styles',
-        dest: '.tmp/styles/',
-        src: '{,*/}*.css'
       }
     },
 
@@ -189,7 +198,6 @@ module.exports = function (grunt) {
   grunt.registerTask('build', [
     'clean:dist',
     'concurrent:dist',
-    'concat',
     'copy:dist'
   ]);
 
