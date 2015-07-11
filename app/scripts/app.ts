@@ -103,6 +103,11 @@ module GestionAirTV {
                         this.gameState.phones[event.number].setStateRinging();
                     }
                     break;
+                case 'PHONE_STOPRINGING':
+                    if(this.gameState && this.gameState.phones[event.number]){
+                        this.gameState.phones[event.number].setStateAvailable();
+                    }
+                    break;
                 case 'PLAYER_ANSWERING':
                     if(this.gameState && this.gameState.players && this.gameState.phones){
                         var player = this.gameState.players[event.playerId];
@@ -288,6 +293,13 @@ module GestionAirTV {
                     });
 
                 phone = this.game.rnd.pick(ringingPhones);
+                var phoneStopped = this.game.rnd.pick(ringingPhones);
+                if(phoneStopped && this.game.rnd.integerInRange(0,100) > 99 ){
+                    this.game.handleEvent({
+                        type: 'PHONE_STOPRINGING',
+                        number: phoneStopped.number
+                    })
+                }
                 player = this.game.rnd.pick(freePlayers);
                 if (player && phone) {
                     var flag = this.game.rnd.pick(this.game.gameState.flags);
@@ -476,7 +488,7 @@ module GestionAirTV {
             } else {
                 this.flag.position.setTo(0, -this.flag.height);
             }
-            this.flag.loadTexture('gb', null);
+            this.flag.loadTexture('fr', null);
             this.flag.visible = false;
             this.add(this.flag);
 

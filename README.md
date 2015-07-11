@@ -39,6 +39,13 @@ phoneRingingEvent = {
 ```
 
 ```javascript
+phoneStopRingingEvent = {
+                        type: 'PHONE_STOPRINGING',
+                        number: __phone.number__
+	                }
+```
+
+```javascript
 playerStartAnsweringEvent = {
                         type: 'PLAYER_ANSWERING',
                         playerId: __player.id__,
