@@ -114,9 +114,9 @@ module GestionAirTV {
                         var player = this.gameState.players[event.playerId];
                         var phone = this.gameState.phones[event.number];
                         if (player && phone) {
-                            player.moveToPhone(phone);
                             phone.setStateWaitForPlayer(player);
                             phone.setFlag(event.flag);
+                            player.moveToPhone(phone);
                         }
                     }
                     break;
@@ -131,11 +131,13 @@ module GestionAirTV {
                     }
                     break;
                 case 'GAME_END':
-                    for (var key in this.gameState.phones) {
-                        this.gameState.phones[key].setStateAvailable();
-                    }
-                    for (var key2 in this.gameState.players) {
-                        this.gameState.players[key2].moveToExit();
+                    if(this.gameState){
+                        for (var key in this.gameState.phones) {
+                            this.gameState.phones[key].setStateAvailable();
+                        }
+                        for (var key2 in this.gameState.players) {
+                            this.gameState.players[key2].moveToExit();
+                        }
                     }
                     this.menuTimeout = setTimeout(()=>{
                         this.gameState = undefined;
