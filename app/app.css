@@ -73,12 +73,12 @@ span {
 }
 #scoreboard .flag .wrong{
     background-color: #dc1616;
-    background-image:  url('../images/delete102.png');
+    background-image:  url('images/delete102.png');
 }
 
 #scoreboard .flag .correct{
     background-color: #338800;
-    background-image:  url('../images/checked21.png');
+    background-image:  url('images/checked21.png');
 
 }
 
