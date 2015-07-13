@@ -99,12 +99,13 @@ module GestionAirTV {
                     }, 20000);
                     break;
                 case 'PHONE_RINGING':
-                    if(this.gameState && this.gameState.phones[event.number]){
+                    if(this.gameState && this.gameState.phones[event.number] &&
+                        this.gameState.phones[event.number].state === Phone.State.AVAILABLE){
                         this.gameState.phones[event.number].setStateRinging();
                     }
                     break;
                 case 'PHONE_STOPRINGING':
-                    if(this.gameState && this.gameState.phones[event.number] && 
+                    if(this.gameState && this.gameState.phones[event.number] &&
                         this.gameState.phones[event.number].state === Phone.State.RINGING){
                         this.gameState.phones[event.number].setStateAvailable();
                     }
@@ -144,7 +145,7 @@ module GestionAirTV {
                         this.state.remove('game');
                         this.state.add('game', this.menuState, true);
                     }, 30000);
-                    this.scoreboard.build(event.scores);
+                    this.scoreboard.build(event.scores || []);
                     break;
             }
 
@@ -223,16 +224,16 @@ module GestionAirTV {
                     { id: 6, name: 'Felicitas' }
                 ],
                 phones: [
-                    { number: 1, x: 400, y: 60, orientation: Phone.Orientation.BOTTOM },
-                    { number: 2, x: 700, y: 60, orientation: Phone.Orientation.BOTTOM },
-                    { number: 3, x: 1000, y: 60, orientation: Phone.Orientation.BOTTOM },
-                    { number: 4, x: 1300, y: 60, orientation: Phone.Orientation.BOTTOM },
-                    { number: 5, x: 1690, y: 200, orientation: Phone.Orientation.LEFT },
-                    { number: 6, x: 1690, y: 460, orientation: Phone.Orientation.LEFT },
-                    { number: 7, x: 1100, y: 620, orientation: Phone.Orientation.TOP },
-                    { number: 8, x: 700, y: 620, orientation: Phone.Orientation.TOP },
-                    { number: 9, x: 100, y: 460, orientation: Phone.Orientation.RIGHT },
-                    { number: 10, x: 100, y: 200, orientation: Phone.Orientation.RIGHT }
+                    { number: 1003, x: 400, y: 60, orientation: Phone.Orientation.BOTTOM },
+                    { number: 1004, x: 700, y: 60, orientation: Phone.Orientation.BOTTOM },
+                    { number: 1005, x: 1000, y: 60, orientation: Phone.Orientation.BOTTOM },
+                    { number: 1006, x: 1300, y: 60, orientation: Phone.Orientation.BOTTOM },
+                    { number: 1007, x: 1690, y: 200, orientation: Phone.Orientation.LEFT },
+                    { number: 1008, x: 1690, y: 460, orientation: Phone.Orientation.LEFT },
+                    { number: 1009, x: 1100, y: 620, orientation: Phone.Orientation.TOP },
+                    { number: 1010, x: 700, y: 620, orientation: Phone.Orientation.TOP },
+                    { number: 1001, x: 100, y: 460, orientation: Phone.Orientation.RIGHT },
+                    { number: 1002, x: 100, y: 200, orientation: Phone.Orientation.RIGHT }
                 ]
             };
             //plan end of round
@@ -681,7 +682,7 @@ module GestionAirTV {
             if (this.tween) {
                 this.tween.stop();
             }
-            this.tween = this.game.add.tween(this).to(this.target, Math.abs(this.target.distance(this.position)/200)*1000 , Phaser.Easing.Sinusoidal.InOut, true, 0, 0, false);
+            this.tween = this.game.add.tween(this).to(this.target, Math.abs(this.target.distance(this.position)/300)*1000 , Phaser.Easing.Sinusoidal.InOut, true, 0, 0, false);
         }
 
         update() {
