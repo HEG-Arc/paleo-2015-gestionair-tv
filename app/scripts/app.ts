@@ -41,7 +41,7 @@ module GestionAirTV {
 
             var onConnect =  () => {
                 jQuery('#error').hide();
-                client.subscribe('/queue/simulator', (message) => {
+                client.subscribe('/exchange/gestionair/simulation', (message) => {
                     try {
                         this.handleEvent(JSON.parse(message.body));
                     } catch (e) {
