@@ -15,6 +15,10 @@ module GestionAirTV {
         constructor() {
             this.menuState = new MenuState();
             super(1920, 1080, Phaser.CANVAS, 'content', this.menuState);
+            this.config = {
+                disableVisibilityChange: true,
+                forceSetTimeOut: true
+            };
         }
 
         boot() {
@@ -62,7 +66,7 @@ module GestionAirTV {
                 //disable unsupported heart-beat
                 client.heartbeat.outgoing = 0;
                 client.heartbeat.incoming = 0;
-                //client.debug = debug;
+                client.debug = debug;
                 client.connect('guest', 'guest', onConnect, failureConnect, '/');
             }
 
