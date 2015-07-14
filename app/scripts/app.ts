@@ -94,6 +94,9 @@ module GestionAirTV {
                        clearTimeout(this.menuTimeout);
                        this.menuTimeout = undefined;
                     }
+                    if(this.gameState){
+                        this.gameState.trailsBitmap = null;
+                    }
                     this.gameState = new GameState(event);
                     this.state.remove('game');
                     this.state.add('game', this.gameState, true);
@@ -692,14 +695,15 @@ module GestionAirTV {
         update() {
 
             var trails = (<GameState>this.game.state.getCurrentState()).trailsBitmap;
-            var s = '00' + this.color.toString(16);
-            trails.context.beginPath();
-            trails.context.fillStyle = '#' + s.substr(s.length - 6);
-            trails.context.arc(this.x - this.width, this.y - this.height / 2, 2, 0, 360, false);
-            trails.context.closePath();
-            trails.context.fill();
-            trails.dirty = true;
-
+            if(trails){
+                var s = '00' + this.color.toString(16);
+                trails.context.beginPath();
+                trails.context.fillStyle = '#' + s.substr(s.length - 6);
+                trails.context.arc(this.x - this.width, this.y - this.height / 2, 2, 0, 360, false);
+                trails.context.closePath();
+                trails.context.fill();
+                trails.dirty = true;
+            }
         }
     }
 
