@@ -56,7 +56,7 @@ module GestionAirTV {
             };
 
             var debug = (m) => {
-                console.log(m);
+                //console.log(m);
             };
 
             var stompConnect = () => {
@@ -176,7 +176,7 @@ module GestionAirTV {
             this.$tbody.empty();
             scores.forEach((item, idx) => {
                 this.$tbody.append('<tr><td>' + (idx + 1) + '</td><td>' + item.name
-                    + '<div>'
+                    + '(#' + item.id + ')<div>'
                     + item.languages.map((code:any)=>{
                         return '<span class="flag"><span class="' + (code.correct ? 'correct' : 'wrong') + '"></span><img src="images/flags/' + code.lang + '.png"></span>'
                     }).join('')
