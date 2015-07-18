@@ -46,6 +46,20 @@ phoneStopRingingEvent = {
 ```
 
 ```javascript
+phoneStopRingingEvent = {
+                        type: 'PHONE_OFFLINE',
+                        number: __phone.number__
+	                }
+```
+
+```javascript
+phoneStopRingingEvent = {
+                        type: 'PHONE_ONLINE',
+                        number: __phone.number__
+	                }
+```
+
+```javascript
 playerStartAnsweringEvent = {
                         type: 'PLAYER_ANSWERING',
                         playerId: __player.id__,

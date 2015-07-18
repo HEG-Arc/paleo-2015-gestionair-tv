@@ -117,6 +117,17 @@ module GestionAirTV {
                         this.gameState.phones[event.number].setStateAvailable();
                     }
                     break;
+                case 'PHONE_OFFLINE':
+                    if(this.gameState && this.gameState.phones[event.number]){
+                        this.gameState.phones[event.number].setStateDisabled();
+                    }
+                    break;
+                case 'PHONE_ONLINE':
+                    if(this.gameState && this.gameState.phones[event.number] &&
+                        this.gameState.phones[event.number].state === Phone.State.OFFLINE){
+                        this.gameState.phones[event.number].setStateAvailable();
+                    }
+                    break;
                 case 'PLAYER_ANSWERING':
                     if(this.gameState && this.gameState.players && this.gameState.phones){
                         var player = this.gameState.players[event.playerId];
@@ -202,6 +213,7 @@ module GestionAirTV {
         state: string;
         timeouts: number[] = [];
         scores: any = [];
+        lastDisableTime: number = 0;
 
         constructor(game: Game) {
             this.game = game;
@@ -273,32 +285,37 @@ module GestionAirTV {
 
         }
 
+        phonesByState(state:Phone.State){
+            return Object.keys(this.game.gameState.phones).map(k=> {
+                return this.game.gameState.phones[k];
+            }).filter(phone => {
+                return phone.state === state;
+            });
+        }
+
         update() {
             var phone: Phone;
             var player: Player;
             if (this.game.gameState && this.state === 'ON') {
                 //make phones ring (max 2 phones not used)
-                var availablePhones:Phone[] = Object.keys(this.game.gameState.phones).map(k=> {
-                        return this.game.gameState.phones[k];
-                    }).filter(phone => {
-                        return phone.state === Phone.State.AVAILABLE;
-                    });
-                while (availablePhones.length > 2) {
-                    phone = this.game.rnd.pick(availablePhones);
-                    availablePhones.splice(availablePhones.indexOf(phone), 1);
-                    this.game.handleEvent({
-                        type: 'PHONE_RINGING',
-                        number: phone.number
-                });
+                var availablePhones:Phone[] = this.phonesByState(Phone.State.AVAILABLE);
+                var ringingPhones:Phone[] = this.phonesByState(Phone.State.RINGING);
+                var waitingPhones:Phone[] = this.phonesByState(Phone.State.WAITING);
+                var answeringPhones:Phone[] = this.phonesByState(Phone.State.ANSWERING);
 
+
+                if (ringingPhones.length + waitingPhones.length + answeringPhones.length <= Object.keys(this.game.gameState.players).length) {
+                    phone = this.game.rnd.pick(availablePhones);
+                    if(phone){
+                        this.game.handleEvent({
+                            type: 'PHONE_RINGING',
+                            number: phone.number
+                        });
+                    }
                 }
 
                 //assign a free player to a ringing phone
-                var ringingPhones: Phone[] = Object.keys(this.game.gameState.phones).map(k=> {
-                        return this.game.gameState.phones[k];
-                    }).filter(phone => {
-                        return phone.state === Phone.State.RINGING;
-                    });
+
 
 
                 var freePlayers: Player[] = Object.keys(this.game.gameState.players).map(k=> {
@@ -307,14 +324,38 @@ module GestionAirTV {
                         return p.phone === null
                     });
 
-                phone = this.game.rnd.pick(ringingPhones);
-                var phoneStopped = this.game.rnd.pick(ringingPhones);
+
+                var phoneStopped = this.game.rnd.pick(this.phonesByState(Phone.State.RINGING));
+
                 if(phoneStopped && this.game.rnd.integerInRange(0,100) > 99 ){
                     this.game.handleEvent({
                         type: 'PHONE_STOPRINGING',
                         number: phoneStopped.number
                     })
                 }
+
+                //disable random phone
+                ringingPhones = this.phonesByState(Phone.State.RINGING).concat(this.phonesByState(Phone.State.AVAILABLE));
+                var phoneDisable = this.game.rnd.pick(ringingPhones);
+                if(this.game.time.elapsedSecondsSince(this.lastDisableTime ) > 4 && phoneDisable){
+                    this.game.handleEvent({
+                        type: 'PHONE_OFFLINE',
+                        number: phoneDisable.number
+                    })
+                    this.lastDisableTime = this.game.time.time;
+
+                    var self = this;
+                    setTimeout(function(){
+                        self.game.handleEvent({
+                            type: 'PHONE_ONLINE',
+                            number: phoneDisable.number
+                        })
+                    }, 4000);
+                }
+
+                // move player to a ringing phone
+                ringingPhones = this.phonesByState(Phone.State.RINGING);
+                phone = this.game.rnd.pick(ringingPhones);
                 player = this.game.rnd.pick(freePlayers);
                 if (player && phone) {
                     var flag = this.game.rnd.pick(this.game.gameState.flags);
@@ -607,11 +648,23 @@ module GestionAirTV {
             setTimeout(() => { this.setStateAvailable() }, 2000);
 
         }
+
         setStateAvailable() {
             this.state = Phone.State.AVAILABLE;
             this.ringingTween.pause();
             this.phone.scale.setTo(1, 1);
             this.phone.tint = 0x000000;
+            this.player = null;
+            this.flag.visible = false;
+            this.countDownText.visible = false;
+            this.timer = -1;
+        }
+
+        setStateDisabled() {
+            this.state = Phone.State.OFFLINE;
+            this.ringingTween.pause();
+            this.phone.scale.setTo(0.5, 0.5);
+            this.phone.tint = 0xCCCCCC;
             this.player = null;
             this.flag.visible = false;
             this.countDownText.visible = false;
@@ -626,7 +679,7 @@ module GestionAirTV {
         }
     }
     module Phone {
-        export enum State { AVAILABLE = 0, RINGING = 4, ANSWERING=8, WAITING = 9 };
+        export enum State { AVAILABLE = 0, RINGING = 4, ANSWERING=8, WAITING = 9, OFFLINE = 10 };
         export enum Orientation {
             TOP = 0,
             RIGHT = 1,
