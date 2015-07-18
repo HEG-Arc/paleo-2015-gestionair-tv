@@ -88,6 +88,7 @@ module GestionAirTV {
         gameState: GameState;
 
         handleEvent(event) {
+            var phone: Phone;
             switch (event.type) {
                 case 'GAME_START':
                     if(this.menuTimeout){
@@ -116,6 +117,12 @@ module GestionAirTV {
                         this.gameState.phones[event.number].state === Phone.State.RINGING){
                         this.gameState.phones[event.number].setStateAvailable();
                     }
+                    if(this.gameState && this.gameState.phones[event.number] &&
+                        this.gameState.phones[event.number].state === Phone.State.ANSWERING){
+                        phone = this.gameState.phones[event.number];
+                        phone.player.playerScore.addAnswer(phone.flag.name, null);
+                        phone.setStateAvailable();
+                    }
                     break;
                 case 'PHONE_OFFLINE':
                     if(this.gameState && this.gameState.phones[event.number]){
@@ -131,7 +138,7 @@ module GestionAirTV {
                 case 'PLAYER_ANSWERING':
                     if(this.gameState && this.gameState.players && this.gameState.phones){
                         var player = this.gameState.players[event.playerId];
-                        var phone = this.gameState.phones[event.number];
+                        phone = this.gameState.phones[event.number];
                         if (player && phone) {
                             phone.setStateWaitForPlayer(player);
                             phone.setFlag(event.flag);
@@ -189,7 +196,7 @@ module GestionAirTV {
                 this.$tbody.append('<tr><td>' + (idx + 1) + '</td><td>' + item.name
                     + ' #' + item.id + '<div>'
                     + item.languages.map((code:any)=>{
-                        return '<span class="flag"><span class="' + (code.correct ? 'correct' : 'wrong') + '"></span><img src="images/flags/' + code.lang + '.png"></span>'
+                        return '<span class="flag"><span class="' + (code.correct=== null ? 'unknown' : code.correct ? 'correct' : 'wrong') + '"></span><img src="images/flags/' + code.lang + '.png"></span>'
                     }).join('')
                     + '</div></td><td>' + item.score + '</td></tr>');
             });
@@ -293,6 +300,33 @@ module GestionAirTV {
             });
         }
 
+        private playerAnswerFactory(playerExt:Player, phoneExt:Phone, flag:string):Function {
+            var player = playerExt;
+            var phone = phoneExt
+            return () =>{
+                var score = this.scores[player.id-1];
+                var correct = this.game.rnd.integerInRange(0,1);
+                if(this.game.rnd.integerInRange(0,100) <= 50){
+                    score.score +=correct;
+                    this.game.handleEvent({
+                        type: 'PLAYER_ANSWERED',
+                        playerId: player.id,
+                        number: phone.number,
+                        correct: correct
+                    });
+                }else{
+                    //simulate player not answering
+                    correct = null;
+                    player.moveToHome();
+                    this.game.handleEvent({
+                        type: 'PHONE_STOPRINGING',
+                        number: phone.number
+                    });
+                }
+                score.languages.push({lang: flag, correct: correct});
+            }
+        };
+
         update() {
             var phone: Phone;
             var player: Player;
@@ -366,18 +400,8 @@ module GestionAirTV {
                         flag: flag //TODO depending on player already seen
                     });
                     // random time on phone and correct answer
-                    this.timeouts.push(setTimeout(() => {
-                        var correct = this.game.rnd.integerInRange(0,1);
-                        var score = this.scores[player.id-1];
-                        score.score +=correct;
-                        score.languages.push({lang: flag, correct: correct});
-                        this.game.handleEvent({
-                            type: 'PLAYER_ANSWERED',
-                            playerId: player.id,
-                            number: phone.number,
-                            correct: correct
-                        })
-                    }, this.game.rnd.integerInRange(6,20) * 1000));
+                    this.timeouts.push(setTimeout(this.playerAnswerFactory(player, phone, flag),
+                        this.game.rnd.integerInRange(6,20) * 1000));
                 }
             }
         }
@@ -386,6 +410,7 @@ module GestionAirTV {
     export module Game {
         export var COLOR_CORRECT: number = 0x338000;
         export var COLOR_WRONG: number = 0xdc1616;
+        export var COLOR_UNKNOWN: number = 0xaaaaaa;
 
     }
 
@@ -446,6 +471,7 @@ module GestionAirTV {
             this.game.load.image('phone', 'images/phone72.png');
             this.game.load.image('correct', 'images/checked21.png');
             this.game.load.image('wrong', 'images/delete102.png');
+            this.game.load.image('unknown', 'images/Question_mark_512.png');
             this.game.load.bitmapFont('digital-7', 'images/fonts/digital-7.mono.png', 'images/fonts/digital-7.mono.xml');
             this.flags.forEach(lg => {
                 this.game.load.image(lg, 'images/flags/' + lg + '.png');
@@ -827,9 +853,9 @@ module GestionAirTV {
             var flag: Phaser.Sprite = this.game.make.sprite(80 + 80*this.answerCount, 0, flagLang);
             flag.scale.set(0.5);
             this.addChild(flag);
-            var check: Phaser.Sprite = this.game.make.sprite(90 + 80* this.answerCount, 10, correct ? 'correct' : 'wrong');
+            var check: Phaser.Sprite = this.game.make.sprite(90 + 80* this.answerCount, 10, correct === null ? 'unknown' : correct ? 'correct' : 'wrong');
             check.scale.set(0.08);
-            check.tint = correct ? Game.COLOR_CORRECT : Game.COLOR_WRONG;
+            check.tint =  correct === null  ? Game.COLOR_UNKNOWN : correct ? Game.COLOR_CORRECT : Game.COLOR_WRONG;
             this.addChild(check);
             this.answerCount++;
         }
