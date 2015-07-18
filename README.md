@@ -66,13 +66,14 @@ playerAnsweredEvent = {
 
 ```javascript
 gameEndEvent = {
-                    type: 'GAME_END'
-					scores:[{name: 'a', score: 43, languages: [{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'b', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'c', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'd', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'e', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
-                {name: 'f', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]}]
+                    type: 'GAME_END',
+                    game: 33,
+					scores:[{id: 1, name: 'a', score: 43, languages: [{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {id: 2, name: 'b', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {id: 3, name: 'c', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {id: 4, name: 'd', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {id: 5, name: 'e', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]},
+                {id: 6, name: 'f', score: 23, languages:[{lang:'gb', correct: 0}, {lang:'de', correct: 1}]}]
                 }
 ```
 

@@ -201,7 +201,7 @@ module GestionAirTV {
         game: Game;
         state: string;
         timeouts: number[] = [];
-        scores: any = {};
+        scores: any = [];
 
         constructor(game: Game) {
             this.game = game;
@@ -213,12 +213,12 @@ module GestionAirTV {
             var duration = 60 * 1000;
             var intro = 6 * 1000;
             var outro = 6 * 1000;
-            this.scores = [{name: 'Alice', score: 0, languages: []},
-                {name: 'Bertrand', score: 0, languages:[]},
-                {name: 'Charles', score: 0, languages:[]},
-                {name: 'Delphine', score: 0, languages:[]},
-                {name: 'Elisabeth', score: 0, languages:[]},
-                {name: 'Felicitas', score: 0, languages:[]}]
+            this.scores = [{id: 1, name: 'Alice', score: 0, languages: []},
+                {id: 2, name: 'Bertrand', score: 0, languages:[]},
+                {id: 3, name: 'Charles', score: 0, languages:[]},
+                {id: 4, name: 'Delphine', score: 0, languages:[]},
+                {id: 5, name: 'Elisabeth', score: 0, languages:[]},
+                {id: 6, name: 'Felicitas', score: 0, languages:[]}]
             var gameStartEvent = {
                 type: 'GAME_START',
                 endTime: new Date(new Date().getTime() + duration+intro).toISOString(),
@@ -248,6 +248,7 @@ module GestionAirTV {
                 //sort scores
                 this.game.handleEvent({
                     type: 'GAME_END',
+                    game: 1,
                     scores: this.scores.sort(function(a,b){
                         return b.score - a.score;
                     })
